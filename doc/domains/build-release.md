@@ -42,3 +42,13 @@
 - `cd react-app && npm run build`（注入版本，0 errors）
 - `npx cap sync`（双端同步）
 - `./scripts/build-release.sh android v0.1.0`（流程不中断）
+
+## 7. CI 首跑教训（2026-08-18）
+
+手动触发 v0.0.1 失败，三处根因均已修复（详见 `issues/BUG-20260818-release-yml-parse.md`）：
+
+1. **cap sync 前必须先 `npm run build`**（dist 不存在则 sync 失败）。
+2. **创建 Release 必须声明 `permissions: contents: write`**（否则 GITHUB_TOKEN 403）。
+3. **release job 仅在至少一平台成功时执行**（`needs.*.result == 'success'`），避免空 Release。
+
+另：setup-node 用 Node 24（Node 20 已弃用）；js-yaml 仅为本地校验工具，不入 devDependencies。

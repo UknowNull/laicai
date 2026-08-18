@@ -24,6 +24,9 @@ on:
 env:
   VERSION: ${{ github.event.inputs.version }}
 
+permissions:
+  contents: write
+
 jobs:
   android:
     name: Build Android APK
@@ -39,7 +42,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: react-app/package-lock.json
 
@@ -59,6 +62,7 @@ jobs:
         working-directory: react-app
         run: |
           npm ci --no-audit --no-fund
+          npm run build
           npx cap sync android
 
       - name: Build debug APK (installable)
@@ -95,7 +99,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: react-app/package-lock.json
 
@@ -110,6 +114,7 @@ jobs:
         working-directory: react-app
         run: |
           npm ci --no-audit --no-fund
+          npm run build
           npx cap sync ios
 
       - name: Pod install
@@ -165,7 +170,8 @@ jobs:
   release:
     name: Create GitHub Release
     needs: [android, ios]
-    if: always() && !cancelled()
+    # 至少一个平台成功才建 Release；两者均失败则跳过（避免空 Release / 403）
+    if: ${{ (needs.android.result == 'success' || needs.ios.result == 'success') && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
