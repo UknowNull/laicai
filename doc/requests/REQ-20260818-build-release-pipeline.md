@@ -35,10 +35,11 @@ related_domains:
 
 ## 验收标准
 
-- [ ] `scripts/version.py` 校验/读取/递增通过（v0.x.x 合法，非 v 前缀拒绝）
-- [ ] `npm run build` 0 errors，App 内展示版本号
-- [ ] `npx cap sync` 成功同步双端
-- [ ] 本地 `build-release.sh` 端到端不中断（无 SDK/Xcode 时明确提示）
-- [ ] workflow 语法终检（actionlint 或人工核对）
-- [ ] doc 同步 + doc_audit 通过
-- [ ] 推送后 CI 可触发（需用户仓库 runs）
+- [x] `scripts/version.py` 校验/读取/递增通过（v0.x.x 合法，非 v 前缀拒绝）
+- [x] `npm run build` 0 errors，App 内展示版本号
+- [x] `npx cap sync` 成功同步双端
+- [x] 本地 `build-release.sh` 端到端不中断（无 SDK/Xcode 时明确提示）
+- [x] workflow 语法终检通过
+- [x] doc 同步 + doc_audit 通过
+- [x] 推送 origin main（fd40845）
+- [ ] CI 首次真实触发（需用户在仓库 Actions → Run workflow 填版本号+更新内容；本机无 Xcode/Android SDK，真实安装包由 runner 产出）——**外部依赖，待用户操作**

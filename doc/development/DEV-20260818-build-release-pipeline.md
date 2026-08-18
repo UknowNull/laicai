@@ -1,12 +1,13 @@
 # DEV-20260818-build-release-pipeline
 
-status: implementing
+status: verified
 date: 2026-08-18
 related_requests:
   - REQ-20260818-build-release-pipeline
 affected_domains:
   - ledger-engine
   - theme-system
+  - build-release
 
 ## 目标
 
