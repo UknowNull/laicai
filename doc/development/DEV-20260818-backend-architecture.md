@@ -253,3 +253,112 @@ res: { answer: string; drills: Drill[]; usage: Usage; }
 ## 8. 文档同步义务
 
 本 DEV 落地后即时更新：`domains/auto-capture`、`domains/ledger-engine`、`domains/analysis-llm`、`domains/import-pipeline`、`domains/privacy-security` 状态从「规划/模拟」推进为「已设计/实施中」，并新增 `ADR-006-backend-stack`。
+
+## 9. 部署与 CI
+
+> 本项目主体为「本地优先 + 云端可选」：服务端**仅在用户显式授权后**开启；未部署时产品完全以本地确定性指标运行。
+
+### 9.1 Service 文件结构
+
+```text
+server/
+├─ src/
+│  ├─ index.ts          Fastify 入口（启动 + /health）
+│  ├─ config.ts         环境变量校验（Zod）
+│  ├─ routes/
+│  │  ├─ report.ts     POST /api/report
+│  │  └─ qa.ts         POST /api/qa
+│  ├─ llm/
+│  │  ├─ provider.ts   Provider 抽象（OpenAI / Anthropic / Ollama）
+│  │  └─ prompts.ts    系统提示（覆盖度/未确认声明强制）
+│  ├─ metrics.ts       确定性指标（服务端镜像，与前端同源）
+│  └─ usage.ts         用量/预算/审计日志
+├─ test/                Vitest 单测 + 契约测试
+├─ Dockerfile
+├─ docker-compose.yml  （本地开发用，含 mock LLM）
+├─ package.json
+└─ tsconfig.json
+```
+
+### 9.2 环境变量（Secrets）
+
+| 变量 | 来源 | 说明 |
+| --- | --- | --- |
+| `LLM_PROVIDER` | Secrets（默认 `openai`） | `openai` | `anthropic` | `ollama` |
+| `LLM_API_KEY` | Secrets | 供应商 API Key |
+| `LLM_MODEL` | Secrets | 模型名（如 `gpt-4o-mini`） |
+| `PORT` | 默认 8080 | 服务端口 |
+| `MAX_TOKENS` | 默认 2000 | 单次调用上限 |
+| `TIMEOUT_MS` | 默认 15000 | 超时（`INV-EXT-01`） |
+| `USAGE_DAILY_USD` | 默认 5 | 单用户每日 USD 限额 |
+
+> 敏感：API Key/密码**从不写入日志、从不落库于审计日志**；审计日志仅记用量、时期、错误类型。
+
+### 9.3 Dockerfile
+
+```dockerfile
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY server/package*.json ./
+RUN npm ci --omit=dev
+COPY server/ ./
+# 运行时以非 root 账户（安全边界）
+USER 10001
+
+FROM node:20-alpine AS runtime
+WORKDIR /app
+COPY --from=deps /app /app
+EXPOSE 8080
+ENTRYPOINT ["node","src/index.js"]
+```
+
+### 9.4 docker-compose（本地开发+mock）
+
+```yaml
+services:
+  laicai-api:
+    build: ./server
+    env_file: .env          # 本地开发用，生产走 Secrets
+    ports: ["8080:8080"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health').on('response',r=>r.statusCode===200?process.exit(0):process.exit(1))"]
+      interval: 30s
+```
+
+### 9.5 CI 流水线（.github/workflows/server.yml，新增）
+
+```yaml
+name: Laicai Server CI
+on:
+  push: { paths: ['server/**'] }
+  pull_request: { paths: ['server/**'] }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4 with: { node-version: 24, cache: npm, cache-dependency-path: server/package-lock.json }
+      - run: npm ci
+        working-directory: server
+      - run: npm run test:ci      # vitest 单测 + 契约测试
+        working-directory: server
+      - run: npm run build        # tsc 类型检查 + build
+        working-directory: server
+  release:
+    # push tag v* 或 workflow_dispatch 时，发布 Docker镜像到 GitHub Packages
+    needs: test
+    runs-on: ubuntu-latest
+    ... image: ghcr.io/USER/laicai-api:${{ inputs.version }}
+```
+
+### 9.6 部署形态
+
+- **本地优先**：默认不部署服务；用户开启授权后客户端直连 `https://api.laicai.example`（或自托管 URL）。
+- **一键部署**：`docker-compose.yml` 拉起服务端；镜像可选 `ghcr.io/USER/laicai-api:v*`。
+- **云主机**：渲染 / fly.io / 自托管 VPS，`PORT` + Secrets 即连。
+- **可观阅性**：`/health` 健康检查 + 审计日志；服务独立关闭不影响前端。
+
+### 9.7 回滚
+
+- 服务端容器回退上一 tag；客户端 `cloudOn=false` 即刻降级为纯本地确定性模式，无版本依赖。
