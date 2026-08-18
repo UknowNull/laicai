@@ -132,19 +132,19 @@ jobs:
         working-directory: react-app/ios/App
         run: |
           mkdir -p export
+          cat > export/ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>development</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
           xcodebuild -exportArchive \
             -archivePath ./build/Laicai.xcarchive \
-            -exportOptionsPlist <(cat <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>method</key><string>development</string>
-  <key>signingStyle</key><string>automatic</string>
-</dict>
-</plist>
-PLIST
-) \
+            -exportOptionsPlist ./export/ExportOptions.plist \
             -exportDir ./export || true
           ls -la ./export/ 2>/dev/null || true
           find ./build -name '*.xcarchive' -maxdepth 2
