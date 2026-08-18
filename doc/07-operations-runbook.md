@@ -43,7 +43,27 @@ python3 scripts/doc_audit.py              # 检查 Git 变更与命中 REQ/BUG �
 python3 scripts/doc_audit.py --report     # 历史盘点
 ```
 
-## 5. 常见故障
+## 5. 打包与发布
+
+```bash
+# 版本工具（唯一来源 react-app/version.json，格式 v0.x.x）
+python3 scripts/version.py            # 当前版本
+python3 scripts/version.py check v0.2.0   # 校验格式（非法退出非 0）
+python3 scripts/version.py bump       # 递增 build
+python3 scripts/version.py bump minor # 递增 minor
+
+# 本地打包（web build → cap sync → 原生构建）
+./scripts/build-release.sh android [VERSION]   # 打 APK
+./scripts/build-release.sh ios [VERSION]       # 打 IPA（需完整 Xcode）
+./scripts/build-release.sh all [VERSION]       # 双端
+
+# CI 发布（推荐，产出真实双端安装包）
+#   GitHub 仓库 → Actions → Laicai Release Pipeline → Run workflow
+#   填：version（v0.x.x）+ changelog（更新内容）
+#   结果：android job 出 apk / ios job(macos-14) 出 ipa → release job 生成 GitHub Release
+```
+
+## 6. 常见故障
 
 | 症状 | 原因 | 解 |
 | --- | --- | --- |

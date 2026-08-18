@@ -149,6 +149,7 @@ export function MinePage({ data }) {
       <div className="menu-row"><span>恢复备份</span><span className="arr">›</span></div>
       <div className="menu-row" onClick={data.resetData} style={{ cursor: 'pointer' }}><span>重置演示数据</span><span className="arr">↺</span></div>
       <div className="privacy">隐私声明：通知正文仅内存解析、不落盘；数据本地优先，可导出；云端分析显式授权、可一键关闭。</div>
+      <div className="app-version">来财记账 <b>{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v0.0.0'}</b> · build {typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : '-'}</div>
     </>
   );
 }

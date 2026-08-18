@@ -325,3 +325,7 @@ html[data-tab-type="diamond"] .tab.on .tdot { background: var(--t-accent); }
 .pend-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--t-line); border-radius: var(--t-radius-m); padding: 10px 12px; margin: 10px 0; cursor: pointer; background: var(--t-card); box-shadow: var(--t-shadow); }
 .pend-l { font-size: 14px; }
 .pend-l small { display: block; font-size: 12px; color: var(--t-ink-2); margin-top: 2px; }
+
+/* 版本号展示（S5 我的页脚） */
+.app-version { margin-top: 14px; font-size: 11px; color: var(--t-ink-3); text-align: center; letter-spacing: .06em; }
+.app-version b { color: var(--t-ink-2); font-weight: 600; }

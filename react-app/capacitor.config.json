@@ -1,0 +1,15 @@
+{
+  "appId": "com.laicai.app",
+  "appName": "来财记账",
+  "webDir": "dist",
+  "version": "0.1.0",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "always"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

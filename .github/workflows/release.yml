@@ -1,0 +1,195 @@
+name: Laicai Release Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（格式 v0.x.x，如 v0.2.0）'
+        required: true
+        type: string
+      changelog:
+        description: '更新内容（写入 Release 说明）'
+        required: true
+        type: string
+      platform:
+        description: '构建目标'
+        required: true
+        type: choice
+        default: 'all'
+        options:
+          - all
+          - android
+          - ios
+
+env:
+  VERSION: ${{ github.event.inputs.version }}
+
+jobs:
+  android:
+    name: Build Android APK
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          echo "${{ env.VERSION }}" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            || { echo "版本号格式非法: ${{ env.VERSION }}（应为 v0.x.x）"; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: react-app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Write version (workflow input wins)
+        run: |
+          SHORT="${{ env.VERSION }}"
+          echo "{\"version\":\"$SHORT\",\"build\":1,\"updated\":\"$(date +%F)\",\"note\":\"CI build\"}" \
+            > react-app/version.json
+          cat react-app/version.json
+
+      - name: NPM install & web build
+        working-directory: react-app
+        run: |
+          npm ci --no-audit --no-fund
+          npx cap sync android
+
+      - name: Build debug APK (installable)
+        working-directory: react-app/android
+        run: ./gradlew assembleDebug -PAPP_VERSION_NAME="${{ env.VERSION }}"
+
+      - name: Build release APK (unsigned)
+        working-directory: react-app/android
+        run: ./gradlew assembleRelease -PAPP_VERSION_NAME="${{ env.VERSION }}"
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p release
+          cp react-app/android/app/build/outputs/apk/debug/app-debug.apk release/laicai-${{ env.VERSION }}-debug.apk 2>/dev/null || true
+          cp react-app/android/app/build/outputs/apk/release/app-release-unsigned.apk release/laicai-${{ env.VERSION }}.apk 2>/dev/null || true
+          ls -la release/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ env.VERSION }}
+          path: release/*.apk
+
+  ios:
+    name: Build iOS App
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' }}
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          echo "${{ env.VERSION }}" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            || { echo "版本号格式非法: ${{ env.VERSION }}（应为 v0.x.x）"; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: react-app/package-lock.json
+
+      - name: Write version (workflow input wins)
+        run: |
+          SHORT="${{ env.VERSION }}"
+          echo "{\"version\":\"$SHORT\",\"build\":1,\"updated\":\"$(date +%F)\",\"note\":\"CI build\"}" \
+            > react-app/version.json
+          cat react-app/version.json
+
+      - name: NPM install & web build
+        working-directory: react-app
+        run: |
+          npm ci --no-audit --no-fund
+          npx cap sync ios
+
+      - name: Pod install
+        working-directory: react-app/ios/App
+        run: pod install
+
+      - name: Archive (unsigned by default; signing via secrets)
+        working-directory: react-app/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ./DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            archive -archivePath ./build/Laicai.xcarchive \
+            MARKETING_VERSION=${{ env.VERSION }} \
+            CURRENT_PROJECT_VERSION=1
+
+      - name: Export IPA (unsigned, embeddable)
+        working-directory: react-app/ios/App
+        run: |
+          mkdir -p export
+          xcodebuild -exportArchive \
+            -archivePath ./build/Laicai.xcarchive \
+            -exportOptionsPlist <(cat <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key><string>development</string>
+  <key>signingStyle</key><string>automatic</string>
+</dict>
+</plist>
+PLIST
+) \
+            -exportDir ./export || true
+          ls -la ./export/ 2>/dev/null || true
+          find ./build -name '*.xcarchive' -maxdepth 2
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p release
+          # 未签名包（真机安装需在 Xcode 签名）
+          cd react-app/ios/App && zip -qr "../../../release/laicai-${{ env.VERSION }}-unsigned-ios-app.zip" ./build/Laicai.xcarchive || true
+          cd "$GITHUB_WORKSPACE"
+          ls -la release/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ env.VERSION }}
+          path: release/*
+
+  release:
+    name: Create GitHub Release
+    needs: [android, ios]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la release/ || true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: 来财记账 ${{ env.VERSION }}
+          body: |
+            ## 更新内容
+
+            ${{ github.event.inputs.changelog }}
+
+            ---
+            - 构建物品：iOS（unsigned，见说明）/ Android（debug + release-unsigned）
+            - 由 GitHub Actions 流水线自动生成
+          files: release/*
+          draft: false
+          prerelease: true

@@ -24,6 +24,7 @@
 | 账单导入、CSV/OFX/PDF/OCR、映射器 | `doc/domains/import-pipeline.md` | `doc/domains/ledger-engine.md` |
 | LLM 周期分析、确定性指标、问答 | `doc/domains/analysis-llm.md` | `ADR-005-*`、`doc/03-engineering-invariants.md` |
 | 隐私、安全、备份、授权 | `doc/domains/privacy-security.md` | `ADR-005-*` |
+| 打包、发布、版本号、GitHub Release | `doc/domains/build-release.md` | `doc/07-operations-runbook.md`、`REQ/DEV-20260818-build-release-pipeline` |
 | 按需求开发设计、实施拆解、迁移回滚 | 命中的 `doc/requests/REQ-*.md`、对应 `doc/development/DEV-*.md` | 受影响领域文档、相关 ADR |
 | 测试失败、回归、验收 | `doc/05-verification.md` | 只读取相关 `doc/issues/BUG-*.md` 和测试文件 |
 | 历史迭代、质量趋势、复盘 | 命中的 `doc/development/RETRO-*.md` | 对应 REQ/DEV |

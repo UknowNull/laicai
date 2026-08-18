@@ -5,6 +5,17 @@ react-app/.npm-cache/
 
 # 构建产物
 react-app/dist/
+release/
+
+# 原生构建产物（Capacitor）
+react-app/android/.gradle/
+react-app/android/build/
+react-app/android/app/build/
+react-app/android/local.properties
+react-app/ios/App/Pods/
+react-app/ios/App/DerivedData/
+react-app/ios/App/build/
+react-app/ios/App/export/
 
 # 测试/临时产物
 _artifact_work/

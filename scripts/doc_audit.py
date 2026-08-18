@@ -45,6 +45,7 @@ REQUIRED_FILES = [
     "doc/domains/import-pipeline.md",
     "doc/domains/analysis-llm.md",
     "doc/domains/privacy-security.md",
+    "doc/domains/build-release.md",
     "doc/decisions/ADR-001-document-authority.md",
     "doc/decisions/ADR-002-theme-architecture.md",
     "doc/decisions/ADR-003-deterministic-first.md",
