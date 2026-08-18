@@ -34,9 +34,11 @@
 
 - **`react-app/`**（Vite + React 18）：
   - `src/theme/`：三套 Design Token + ThemeProvider（运行时切换 + localStorage）。
-  - `src/engine/`：`ledger.js`（统一数据模型）+ `useLedger.js`（统一状态机）。
+  - `src/engine/`：`ledger.js`（统一数据模型）+ `useLedger.js`（统一状态机）+ `parse/`（规划）+ `dedup/`（规划）。
   - `src/components/`：PhoneShell / TabBar / TxRow / KeyPad / ReportCard / CountUp / AutoBookDemo / Pages / Sheets。
   - `src/layouts/`：三套首页骨架（ledger / hero / ring）。
+- **`react-app/android/` + `react-app/ios/`**：Capacitor 双端原生壳（build-release 域管理）。
+- **`server/`（设计完成，规划中）**：Node/TS Fastify 服务（LLM 分析网关），Docker 化可选部署（`DEV-20260818-backend-architecture` §4.5）。
 - **`prototypes/`**：三版独立 HTML 原型（简约/时尚/奢华），iPhone 设备框 + 交互动画；与 `react-app` 同一数据。
 - **`theme-switcher.html`**：三版并行一键聚焦演示。
 - **`index.html`**：交付物总览入口。
@@ -50,6 +52,7 @@
 | ADR-003 | 确定优先 | 金额/方向/去重/余额由确定性代码控制，LLM 只做解释建议 |
 | ADR-004 | 去重 ID | SHA-256(`${source}|${merchant}|${amount}|${timeWindow}`) |
 | ADR-005 | 隐私边界 | 通知正文不落盘；云端 LLM 显式授权、最小化上传、可关闭 |
+| ADR-006 | 后端技术栈 | TS/Node 全栈；原生 Kotlin 采集插件；本地优先+云端可选；LLM provider 抽象 |
 
 ## 4. 数据流（核心）
 
