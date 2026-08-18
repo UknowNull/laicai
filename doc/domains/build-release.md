@@ -52,3 +52,10 @@
 3. **release job 仅在至少一平台成功时执行**（`needs.*.result == 'success'`），避免空 Release。
 
 另：setup-node 用 Node 24（Node 20 已弃用）；js-yaml 仅为本地校验工具，不入 devDependencies。
+
+## 8. 原生全屏渲染
+
+- `PhoneShell.jsx` 检测 `Capacitor.isNativePlatform()`：原生环境不渲染 iPhone 设备框（灵动岛/状态栏/Home 条），改为 `.app-native` 全屏铺满 WebView。
+- `body.native` class：`display:block; padding:0; width:100vw; height:100vh`（移除浏览器预览的居中 flex），`padding: env(safe-area-inset-*)` 适配异形屏/安全区。
+- 浏览器原型预览仍保留 `.phone-shell`（340×748）供演示；App 真机为全屏 edge-to-edge。
+- 验证：Playwright 原生模拟（`Capacitor.isNativePlatform()=>true`）→ `.phone-shell`=0、`.app-native`=1、view 视口铺满（appRect top=0）。

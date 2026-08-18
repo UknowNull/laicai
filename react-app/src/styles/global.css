@@ -27,8 +27,10 @@ body {
 }
 
 /* ============ iPhone 设备框（统一模板，尺寸固定） ============ */
-.phone-shell {
-  width: 340px; height: 748px; position: relative; flex: none;
+/* ============ iPhone 设备框（浏览器预览）+ 原生全屏 ============ */
+.app-native { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; }
+body.native { display: block; padding: 0; margin: 0; width: 100vw; height: 100vh; min-height: 100vh; background: #000; }
+.phone-shell { width: 340px; height: 748px; position: relative; flex: none;
   border-radius: 46px; background: #000; overflow: hidden;
   box-shadow: var(--t-shadow, none), 0 0 0 2px #222;
 }
@@ -285,18 +287,17 @@ html[data-tab-type="diamond"] .tab.on .tdot { background: var(--t-accent); }
 }
 .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* 主题徽标（页面顶部） */
-.theme-strip {
-  position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 999;
-  display: flex; gap: 10px; background: rgba(10,16,14,.88); border: 1px solid rgba(255,255,255,.14);
-  border-radius: 999px; padding: 8px 14px; backdrop-filter: blur(8px); box-shadow: 0 8px 26px rgba(0,0,0,.4);
-}
-.theme-strip .ts-btn {
-  font-size: 12px; padding: 6px 14px; border-radius: 999px; border: 1px solid transparent;
-  background: transparent; color: #EDE7D8; cursor: pointer; letter-spacing: .05em; transition: all .2s;
-}
-.theme-strip .ts-btn.on { background: #C7A25B; color: #101A17; font-weight: 700; }
-.theme-strip .ts-name { font-size: 11px; color: rgba(237,231,216,.55); display: flex; align-items: center; padding: 0 6px; letter-spacing: .08em; }
+/* 主题徽标（已移除，主题切换迁至 S5 我的 / 外观设置） */
+.theme-strip { display: none; }
+
+/* 主题设置行（S5 我的 / 外观） */
+.theme-picker { display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; }
+.tp-btn { display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:var(--t-radius-m);
+  border:1px solid var(--t-line); background:var(--t-card); cursor:pointer; text-align:left; transition:all .2s; }
+.tp-swatch { width:18px; height:18px; border-radius:50%; background:var(--t-accent); flex:0 0 18px; }
+.tp-name { font-size:13px; font-weight:600; color:var(--t-ink); }
+.tp-desc { font-size:11px; color:var(--t-ink-3); margin-left:auto; text-align:right; }
+.tp-btn.on { border-color:var(--t-accent); box-shadow:var(--t-accent-soft) 0 0 0 4px; }
 /* ============ 自动记账演示 S0 ============ */
 .demo-card { border: 1px solid var(--t-line); border-radius: var(--t-radius-m); padding: 12px 14px; margin: 4px 0 12px; background: var(--t-card); box-shadow: var(--t-shadow); }
 .demo-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }

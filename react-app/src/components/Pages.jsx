@@ -130,9 +130,20 @@ export function AnalysisPage({ data }) {
 
 /* ---------------- S5 我的 ---------------- */
 export function MinePage({ data }) {
+  const { themeId, setTheme, themes } = useTheme();
   return (
     <>
       <div className="ph"><h2>我的</h2><span style={{ fontSize: 12, color: 'var(--t-ink-3)' }}>账户与设置</span></div>
+      <div className="sec-t"><h3>外观</h3><span style={{ fontSize: 12, color: 'var(--t-ink-3)' }}>主题切换 · 即时生效</span></div>
+      <div className="theme-picker">
+        {Object.values(themes).map((t) => (
+          <button key={t.id} className={`tp-btn ${themeId === t.id ? 'on' : ''}`} onClick={() => setTheme(t.id)}>
+            <i className="tp-swatch" style={{ background: t.tokens['--t-accent'] }} />
+            <span className="tp-name">{t.name}</span>
+            <span className="tp-desc">{t.desc}</span>
+          </button>
+        ))}
+      </div>
       <div className="sec-t"><h3>账户</h3><span style={{ fontSize: 12, color: 'var(--t-ink-3)' }}>合计 {fmtYuan(ACCOUNTS.reduce((s, a) => s + a.balance, 0))}</span></div>
       {ACCOUNTS.map((a) => (
         <div className="acct-row" key={a.id} onClick={() => data.openAcct(a.name)}>
