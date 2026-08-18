@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>来财记账 · 换肤实验室（同芯异壳）</title>
+<!--
+  来财记账 · 换肤实验室 —— 三版同芯异壳的可视化验证
+  ------------------------------------------------------------
+  目的：证明「三版功能点一致，UI 可一键更换」。
+  结构：三个 iframe 并行加载三版原型（同一引擎数据源），顶栏切换器决定
+        哪一版放大展示（momentum 放大），其余缩小变暗；右侧面板显示当前
+        版本的设计 Token 与功能一致性勾选清单。
+  实现说明：三版为独立 HTML（原型阶段），本页用 iframe 容器做「运行时聚焦」，
+        切换仅改变展示层级 —— 真正的一键换肤（Token 热切换）见 UI_SWAP_PLAN.md 方案一。
+  母题 form：三个并排的 iPhone = 同一本账册的三次誊写，顶栏选择器 = 挑选誊写的式样。
+-->
+<style>
+  :root{
+    --bg:#0F1B16;--panel:#16211D;--line:rgba(199,162,91,.35);--gold:#C7A25B;
+    --gold2:#E3C88F;--ink:#EDE7D8;--sub:#9AA79E;--lime:#C8F135;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;}
+  html,body{height:100%;background:radial-gradient(1000px 600px at 80% -10%,rgba(199,162,91,.10),transparent 55%),var(--bg);color:var(--ink);}
+  body{display:flex;flex-direction:column;overflow:hidden;}
+
+  /* 顶栏 */
+  .bar{
+    display:flex;align-items:center;gap:24px;
+    padding:14px 28px;border-bottom:1px solid var(--line);flex:none;
+    background:rgba(12,19,16,.85);backdrop-filter:blur(6px);z-index:20;
+  }
+  .bar .brand{display:flex;flex-direction:column;gap:2px;}
+  .bar .brand b{font-family:"Songti SC","Noto Serif SC",serif;font-size:19px;letter-spacing:.1em;}
+  .bar .brand span{font-size:11px;color:var(--sub);letter-spacing:.15em;}
+  .switches{display:flex;gap:10px;margin-left:auto;}
+  .sw{
+    border:1px solid var(--line);background:transparent;color:var(--sub);
+    font-size:14px;padding:9px 20px;border-radius:6px;cursor:pointer;transition:all .2s;
+    letter-spacing:.06em;
+  }
+  .sw:hover{border-color:var(--gold);color:var(--gold2);}
+  .sw.on{background:var(--gold);border-color:var(--gold);color:#101A17 !important;font-weight:700;box-shadow:0 6px 18px rgba(199,162,91,.3);}
+  .sw small{display:block;font-size:10px;font-weight:400;opacity:.7;letter-spacing:.1em;}
+  .badge-live{
+    font-size:11px;color:var(--lime);border:1px solid rgba(200,241,53,.4);
+    padding:3px 12px;border-radius:20px;letter-spacing:.1em;
+    animation:pulse 2.2s ease infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+  /* 主舞台 */
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;gap:34px;padding:30px 40px;overflow:hidden;}
+  .slot{
+    position:relative;transition:all .5s cubic-bezier(.2,.8,.2,1);
+    filter:grayscale(.4) brightness(.6);transform:scale(.78);opacity:.5;cursor:pointer;
+    flex:none;
+  }
+  .slot:hover{filter:grayscale(.15) brightness(.85);}
+  .slot.now{
+    filter:none;transform:scale(1);opacity:1;z-index:10;
+    box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px var(--gold);
+    border-radius:52px;
+  }
+  .slot iframe{width:340px;height:748px;border:none;border-radius:46px;pointer-events:none;display:block;background:#000;}
+  .slot.now iframe{pointer-events:auto;}
+  .slot .tag{
+    position:absolute;top:-34px;left:50%;transform:translateX(-50%);
+    font-size:12px;letter-spacing:.2em;color:var(--sub);white-space:nowrap;
+    transition:color .3s;
+  }
+  .slot.now .tag{color:var(--gold2);}
+  .slot .hint{
+    position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);
+    font-size:10.5px;color:var(--sub);white-space:nowrap;letter-spacing:.06em;opacity:0;transition:opacity .3s;
+  }
+  .slot.now .hint{opacity:1;color:var(--sub);}
+
+  /* 侧栏 */
+  .side{
+    position:fixed;right:18px;bottom:18px;top:auto;width:300px;
+    background:rgba(15,27,22,.92);border:1px solid var(--line);border-radius:10px;
+    padding:16px 18px;z-index:30;backdrop-filter:blur(8px);box-shadow:0 14px 40px rgba(0,0,0,.4);
+    max-height:46vh;overflow-y:auto;scrollbar-width:none;
+    font-size:12px;
+  }
+  .side::-webkit-scrollbar{display:none}
+  .side h4{font-family:"Songti SC",serif;font-size:13px;letter-spacing:.15em;color:var(--gold2);margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:6px;}
+  .side .tok{display:flex;align-items:center;gap:8px;margin:6px 0;color:var(--sub);}
+  .side .tok b{color:var(--ink);font-weight:600;width:64px;flex:none;}
+  .side .swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(255,255,255,.2);flex:none;}
+  .side .tok .serif{font-family:"Songti SC",serif;font-size:12px;}
+  .side .feats{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;}
+  .side .feat{display:flex;align-items:flex-start;gap:8px;margin:7px 0;color:var(--ink);line-height:1.5;}
+  .side .feat .ck{color:var(--lime);flex:none;font-size:12px;margin-top:1px;}
+  .side .note{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;color:var(--sub);line-height:1.8;font-size:11px;}
+  .side .note b{color:var(--gold2);}
+
+  /* 底部说明 */
+  .foot{flex:none;padding:10px 28px;border-top:1px solid var(--line);font-size:11px;color:var(--sub);display:flex;gap:22px;letter-spacing:.04em;}
+  .foot b{color:var(--gold2);}
+
+  @media(max-width:1100px){
+    .slot iframe{width:280px;height:616px;}
+    .side{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="brand">
+    <b>来财记账 · 换肤实验室</b>
+    <span>THEME LAB · 同芯异壳演示</span>
+  </div>
+  <div class="badge-live">LIVE · 三版并行</div>
+  <div class="switches">
+    <button class="sw" data-t="minimal" onclick="pick('minimal')">简约版<small>Minimal · 墨与账本</small></button>
+    <button class="sw" data-t="fashion" onclick="pick('fashion')">时尚版<small>Fashion · 流动的金币</small></button>
+    <button class="sw" data-t="luxury" onclick="pick('luxury')">奢华版<small>Luxury · 鎏金钱庄</small></button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="slot" id="sl-minimal" onclick="pick('minimal')">
+    <div class="tag">简约版 · MINIMAL</div>
+    <iframe src="prototypes/minimal.html" title="简约版"></iframe>
+    <div class="hint">点击聚焦</div>
+  </div>
+  <div class="slot" id="sl-fashion" onclick="pick('fashion')">
+    <div class="tag">时尚版 · FASHION</div>
+    <iframe src="prototypes/fashion.html" title="时尚版"></iframe>
+    <div class="hint">点击聚焦</div>
+  </div>
+  <div class="slot" id="sl-luxury" onclick="pick('luxury')">
+    <div class="tag">奢华版 · LUXURY</div>
+    <iframe src="prototypes/luxury.html" title="奢华版"></iframe>
+    <div class="hint">点击聚焦</div>
+  </div>
+</div>
+
+<div class="side" id="side">
+  <h4>当前版本 · <span id="curName">简约版</span></h4>
+  <div id="tokBody"></div>
+  <div class="feats">
+    <div class="feat"><span class="ck">✓</span>自动记账演示动画（通知→解析→入账）</div>
+    <div class="feat"><span class="ck">✓</span>首页总览：结余/支出/收入/待确认角标/分类占比</div>
+    <div class="feat"><span class="ck">✓</span>流水列表 + 筛选 + 搜索 + 详情弹层（来源/置信度）</div>
+    <div class="feat"><span class="ck">✓</span>记一笔：金额键盘/收支切换/分类宫格/账户</div>
+    <div class="feat"><span class="ck">✓</span>分析：确定性指标 + LLM 报告加载 + 问答</div>
+    <div class="feat"><span class="ck">✓</span>我的：账户/通知开关/云端授权开关/备份</div>
+  </div>
+  <div class="note">
+    <b>同芯异壳：</b>三版共享同一数据与交互引擎（PRD 派生），
+    差异仅在 <b>Design Token</b>（色/字/圆角/描边）与<b>布局骨架</b>。
+    正式开发采用「一套引擎 + 三套主题 + 三套布局组件」即可运行时一键换 UI
+    ——详见 <b>UI_SWAP_PLAN.md</b>。
+  </div>
+</div>
+
+<div class="foot">
+  <span><b>功能一致：</b>三版数据与交互 100% 同源</span>
+  <span><b>差异：</b>仅视觉语言（母题/色板/骨架）</span>
+  <span><b>切换：</b>顶栏按钮聚焦 · 点击任意 iPhone 亦可</span>
+  <span><b>后续：</b>Token 主题化即可开发期一键切换</span>
+</div>
+
+<script>
+var THEMES={
+  minimal:{name:'简约版',t:'Minimal · 墨与账本',tok:[
+    ['底色','#F7F4EE',null],['主字','#1E1C19',null],['朱砂','#B4552D',null],['收入','#3E6B4F',null],
+    ['字体','宋体衬线 · 等宽数字','serif']]},
+  fashion:{name:'时尚版',t:'Fashion · 流动的金币',tok:[
+    ['底色','#0E0F0D',null],['主字','#F5F5F0',null],['青柠','#C8F135',null],['支出','#FF6B4A',null],
+    ['字体','无衬线 900 · SF Mono 金额','sans']]},
+  luxury:{name:'奢华版',t:'Luxury · 鎏金钱庄',tok:[
+    ['底色','#101A17',null],['主字','#EDE7D8',null],['鎏金','#C7A25B',null],['收入','#8FB573',null],
+    ['字体','宋体衬线 · 宽字距','serif']]}
+};
+var cur='minimal';
+function pick(t){
+  cur=t;
+  document.querySelectorAll('.slot').forEach(function(s){s.classList.toggle('now',s.id==='sl-'+t)});
+  document.querySelectorAll('.sw').forEach(function(s){s.classList.toggle('on',s.dataset.t===t)});
+  renderSide();
+}
+function renderSide(){
+  var th=THEMES[cur];
+  document.getElementById('curName').textContent=th.name;
+  document.getElementById('tokBody').innerHTML=th.tok.map(function(r){
+    if(r[2]==='serif'){return '<div class="tok"><b>'+r[0]+'</b><span class="serif">'+r[1]+'</span></div>'}
+    return '<div class="tok"><b>'+r[0]+'</b><span class="swatch" style="background:'+r[1]+'"></span><span>'+r[1]+'</span></div>';
+  }).join('');
+}
+/* localStorage 记忆上次选择 */
+(function(){
+  var last=localStorage.getItem('laicai.theme');
+  if(last&&THEMES[last])pick(last);else pick('minimal');
+  try{localStorage.setItem('laicai.theme',cur)}catch(e){}
+})();
+window.addEventListener('beforeunload',function(){try{localStorage.setItem('laicai.theme',cur)}catch(e){}});
+</script>
+</body>
+</html>

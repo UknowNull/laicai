@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>来财记账 · 产品交付总览</title>
+<!--
+  来财记账 · 交付总览页（单文件自包含，无外网资源）
+  母题 form：把整个交付当作「一册打开的账本」——左侧是目录索引，右侧是每一件的陈列。
+  全部交付物均由 PRD.md 同源派生。
+-->
+<style>
+  :root{
+    --paper:#F7F4EE; --ink:#1E1C19; --accent:#B4552D; --sub:#8A857B; --line:#E5E0D4;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:
+      radial-gradient(900px 500px at 85% -10%, rgba(180,85,45,.08), transparent 60%),
+      var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;line-height:1.65;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:56px 44px 80px;}
+
+  header{display:flex;align-items:flex-end;gap:26px;padding-bottom:34px;border-bottom:2px solid var(--ink);}
+  .brand .mark{
+    font-family:"Songti SC","Noto Serif SC",serif;font-size:13px;letter-spacing:.3em;
+    color:var(--accent);margin-bottom:10px;
+  }
+  .brand h1{font-family:"Songti SC","Noto Serif SC",serif;font-size:52px;letter-spacing:.05em;font-weight:700;}
+  .brand h1 em{font-style:normal;color:var(--accent);}
+  .brand .tag{margin-top:12px;font-size:15px;color:var(--sub);max-width:560px;}
+  .ledger{margin-left:auto;text-align:right;font-size:13px;color:var(--sub);line-height:2;}
+  .ledger b{color:var(--ink);font-size:15px;}
+
+  .intro{
+    margin:30px 0 44px;padding:22px 28px;background:#fff;
+    border-left:3px solid var(--accent);font-size:15.5px;color:#3E3A33;
+  }
+  .intro b{color:var(--ink);}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+
+  .item{
+    position:relative;background:#fff;border:1px solid var(--line);
+    border-radius:8px;padding:26px 24px 24px;text-decoration:none;color:inherit;
+    transition:transform .22s, box-shadow .22s;display:block;
+  }
+  .item:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(30,28,25,.10);}
+  .item .idx{
+    font-family:"Songti SC",serif;font-size:12px;color:var(--accent);
+    letter-spacing:.25em;margin-bottom:12px;
+  }
+  .item h2{font-size:21px;margin-bottom:8px;letter-spacing:.02em;}
+  .item .desc{font-size:13.5px;color:var(--sub);margin-bottom:18px;min-height:64px;}
+  .item .meta{
+    display:flex;justify-content:space-between;align-items:center;
+    padding-top:14px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--sub);
+  }
+  .item .meta .open{color:var(--accent);font-weight:600;letter-spacing:.08em;}
+
+  .item.wide{grid-column:span 2;}
+  .item.feature{
+    grid-column:span 3;display:grid;grid-template-columns:1.1fr 2fr;gap:30px;
+    align-items:start;
+  }
+  .item.feature .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .thumb{border:1px solid var(--line);border-radius:6px;overflow:hidden;padding:10px;background:#fff;text-align:center}
+  .thumb .cap{text-align:center;font-size:12px;color:var(--sub);margin-top:8px;}
+  .thumb .ph.m{background:#F7F4EE;color:#1E1C19;border:2px solid #1E1C19;}
+  .thumb .ph.f{background:#0E0F0D;color:#C8F135;}
+  .thumb .ph.l{background:#101A17;color:#C7A25B;}
+
+  .legend{
+    margin-top:44px;padding:22px 28px;border:1px solid var(--line);border-radius:8px;
+    background:#fff;font-size:13px;color:var(--sub);line-height:2;
+  }
+  .legend b{color:var(--ink);}
+  .legend .dots span{display:inline-block;margin-right:20px;}
+  .legend .d{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}
+
+  footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;font-size:12.5px;color:var(--sub);}
+
+  @media(max-width:900px){
+    .grid{grid-template-columns:1fr 1fr;}
+    .item.feature{grid-column:span 2;grid-template-columns:1fr;}
+    .item.feature .thumbs{grid-template-columns:repeat(3,1fr);}
+    header{flex-wrap:wrap;}
+    .ledger{margin-left:0;text-align:left;}
+  }
+  @media(max-width:600px){
+    .grid{grid-template-columns:1fr;}
+    .item.wide,.item.feature{grid-column:span 1;}
+    .wrap{padding:32px 20px;}
+    .brand h1{font-size:38px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="mark">LAICAI · BOOKKEEPING</div>
+      <h1>来财<em>记账</em> · 产品交付</h1>
+      <div class="tag">Android 实时自动记账 + 跨端账单导入 + 云端 LLM 周期分析 —— 一套「确定优先」的记账产品。</div>
+    </div>
+    <div class="ledger">
+      <b>2026-08-17 · v1.0</b><br>
+      需求源头：PRD.md<br>
+      五件交付物 · 同源派生
+    </div>
+  </header>
+
+  <div class="intro">
+    <b>如何浏览：</b>本页是「来财记账」全部设计交付物的入口。从左到右依次是：需求文档 → 三版风格高保真原型（可交互、带 iPhone 设备框与动画）→ 产品介绍 PPT → 产品信息图。每一件都对应开发可用的具体细节，建议先看 PRD 建立需求全貌，再逐一打开三版原型做风格比对。
+  </div>
+
+  <div class="grid">
+
+    <a class="item" href="PRD.md" target="_blank">
+      <div class="idx">01 · 需求源头</div>
+      <h2>产品需求文档（PRD）</h2>
+      <div class="desc">覆盖产品定位、用户场景、P0–P2 功能点清单、数据模型、关键流程、非功能需求与四阶段里程碑。是开发与验收的唯一依据。</div>
+      <div class="meta"><span>Markdown · 评审稿</span><span class="open">打开 →</span></div>
+    </a>
+
+    <a class="item" href="DESIGN_SPEC.md" target="_blank">
+      <div class="idx">02 · 设计规范</div>
+      <h2>三版设计规范</h2>
+      <div class="desc">三版原型的共同输入：统一数据、屏幕地图、iPhone 设备框规格、交互与动画硬性要求、反 AI-slop 约束。</div>
+      <div class="meta"><span>Markdown</span><span class="open">打开 →</span></div>
+    </a>
+
+    <a class="item" href="theme-switcher.html" target="_blank">
+      <div class="idx">03.5 · 换肤实验室</div>
+      <h2>三版一键切换演示</h2>
+      <div class="desc">「同芯异壳」的可视化证明：三台 iPhone 并行，顶栏一键聚焦任意版本。同一数据与交互引擎，仅换 Design Token 与布局骨架。</div>
+      <div class="meta"><span>Theme Lab · 运行时可切换</span><span class="open">打开 →</span></div>
+    </a>
+
+    <a class="item" href="react-app/" target="_blank">
+      <div class="idx">03.6 · 开发工程</div>
+      <h2>主题化 React 工程骨架</h2>
+      <div class="desc">可运行的 React 工程：一套引擎（数据+状态机）+ 三套 Design Token + 三套布局组件，运行时一键换肤并 localStorage 记忆。`npm run dev` 启动开发；`npm run build` 产出 dist。</div>
+      <div class="meta"><span>React + Vite · 可构建</span><span class="open">打开 →</span></div>
+    </a>
+
+    <a class="item feature" href="#prototypes">
+      <div class="idx">03 · 三版风格原型</div>
+      <h2>高保真 App 原型 · 三版风格</h2>
+      <div class="desc">同一套需求数据，三种完整不同的设计语言。每版均为可交互单文件（双击即开）：iPhone 设备框、5-Tab 导航、自动记账链路动画、流水详情弹层、LLM 报告加载态……可直接作为 UI 开发参照。</div>
+      <div class="thumbs" id="prototypes">
+        <a class="thumb" href="prototypes/minimal.html" target="_blank">
+          <img src="deck/img/minimal.png" alt="简约版" style="width:auto;height:140px;border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.18)">
+          <div class="cap">简约版 · 墨与账本</div>
+        </a>
+        <a class="thumb" href="prototypes/fashion.html" target="_blank">
+          <img src="deck/img/fashion.png" alt="时尚版" style="width:auto;height:140px;border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.18)">
+          <div class="cap">时尚版 · 流动的金币</div>
+        </a>
+        <a class="thumb" href="prototypes/luxury.html" target="_blank">
+          <img src="deck/img/luxury.png" alt="奢华版" style="width:auto;height:140px;border-radius:18px;box-shadow:0 6px 16px rgba(0,0,0,.18)">
+          <div class="cap">奢华版 · 鎏金钱庄</div>
+        </a>
+      </div>
+    </a>
+
+    <a class="item" href="deck/index.html" target="_blank">
+      <div class="idx">04 · 产品路演</div>
+      <h2>产品介绍 PPT</h2>
+      <div class="desc">1920×1080 的 HTML 幻灯片：市场断层、四支柱、自动记账链路、三版风格预览、隐私设计、四阶段路线。键盘 ←→ 翻页，概览墙直达任一页。</div>
+      <div class="meta"><span>HTML Deck · 键盘导航</span><span class="open">打开 →</span></div>
+    </a>
+
+    <a class="item" href="infographic/index.html" target="_blank">
+      <div class="idx">05 · 传播与说明</div>
+      <h2>产品信息图</h2>
+      <div class="desc">一页式产品说明：市场断层数据、四大能力支柱、自动记账处理链路（六步管道）、隐私设计、四阶段路线图。适合传播与架构讲解。</div>
+      <div class="meta"><span>单页 HTML · 长图</span><span class="open">打开 →</span></div>
+    </a>
+
+    <a class="item" href="自动记账App_GitHub竞品调研报告.docx" target="_blank">
+      <div class="idx">06 · 调研依据</div>
+      <h2>GitHub 竞品调研报告</h2>
+      <div class="desc">本产品全部决策的调研来源：市场断层验证、Mymo 源码分析、平台可行性边界、许可证影响与最终选型判断。</div>
+      <div class="meta"><span>DOCX 原件</span><span class="open">打开 →</span></div>
+    </a>
+
+  </div>
+
+  <div class="legend">
+    <b>三版风格速览：</b>
+    <span class="dots">
+      <span><span class="d" style="background:#B4552D"></span>简约版 · 苏纸与朱砂，安静的账本气质</span>
+      <span><span class="d" style="background:#C8F135"></span>时尚版 · 石墨与青柠，实时的年轻冲击</span>
+      <span><span class="d" style="background:#C7A25B"></span>奢华版 · 墨绿与鎏金，尊贵的钱庄体面</span>
+    </span>
+    <br><b>共同内核：</b>内容 100% 同源（PRD），仅设计语言不同；三版都满足可读性底线、确定性优先与隐私内建的表达。
+  </div>
+
+  <footer>
+    <div>来财记账 · 需求与设计交付包 v1.0</div>
+    <div>PRD → 三版原型 → PPT → 信息图 · 同源派生</div>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>来财记账 · 产品信息图</title>
+<!--
+  来财记账 · 产品信息图（单文件自包含）
+  母题 form：信息图以「账本流水账 + 管道链路」为结构——自上而下的信息流
+  模拟一次自动记账的处理过程，每一层都是一道「处理关卡」。
+  数据来源：PRD.md（需求源头），与三版原型共用同一套数据与功能点。
+-->
+<style>
+  :root{
+    --bg:#0F1B16;          /* 深墨绿 */
+    --bg2:#14231D;
+    --card:#172820;
+    --line:rgba(199,162,91,.35);
+    --gold:#C7A25B;
+    --gold2:#E3C88F;
+    --ink:#EDE7D8;
+    --sub:#9AA79E;
+    --lime:#C8F135;
+    --red:#FF6B4A;
+    --green:#8FB573;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:radial-gradient(1200px 800px at 20% -10%, #1B2E25 0%, var(--bg) 55%);
+    color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.7;
+  }
+  .sheet{
+    max-width:1080px;margin:0 auto;padding:64px 56px 80px;
+  }
+  /* ---------- 顶部 ---------- */
+  .topline{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+  .topline::before{content:"";width:56px;height:2px;background:var(--gold);}
+  .topline span{font-size:13px;letter-spacing:.35em;color:var(--gold);text-transform:uppercase;}
+  h1{
+    font-family:"Songti SC","Noto Serif SC",serif;
+    font-size:64px;font-weight:700;letter-spacing:.06em;
+    margin:6px 0 18px;
+  }
+  h1 em{font-style:normal;color:var(--gold2);}
+  .sub{font-size:19px;color:var(--sub);max-width:780px;margin-bottom:8px;}
+  .promise{
+    display:inline-block;margin-top:14px;padding:10px 22px;
+    border:1px solid var(--line);border-radius:4px;
+    color:var(--gold2);font-size:15px;letter-spacing:.05em;
+  }
+  /* ---------- 区块 ---------- */
+  section{margin-top:72px;}
+  .sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:28px;}
+  .sec-no{
+    font-family:"Songti SC",serif;font-size:20px;color:var(--gold);
+    border:1px solid var(--line);width:44px;height:44px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:3px;
+  }
+  .sec-head h2{font-size:30px;font-family:"Songti SC","Noto Serif SC",serif;letter-spacing:.04em;}
+  .sec-head .hint{font-size:13px;color:var(--sub);margin-left:auto;letter-spacing:.08em;}
+  /* ---------- 市场断层 ---------- */
+  .gap-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  .gap-card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:6px;padding:26px 24px;position:relative;
+  }
+  .gap-card .star{
+    font-family:"Songti SC",serif;font-size:44px;color:var(--gold2);line-height:1;
+  }
+  .gap-card .name{font-size:16px;margin:10px 0 4px;font-weight:600;}
+  .gap-card .role{font-size:13px;color:var(--sub);}
+  .gap-card .tag{
+    display:inline-block;margin-top:12px;font-size:12px;padding:3px 10px;
+    border-radius:20px;letter-spacing:.05em;
+  }
+  .tag.ok{background:rgba(143,181,115,.15);color:var(--green);border:1px solid rgba(143,181,115,.4);}
+  .tag.gap{background:rgba(255,107,74,.12);color:var(--red);border:1px solid rgba(255,107,74,.4);}
+  .gap-verdict{
+    margin-top:24px;padding:20px 24px;background:linear-gradient(90deg,rgba(199,162,91,.12),transparent);
+    border-left:3px solid var(--gold);font-size:17px;border-radius:0 6px 6px 0;
+  }
+  .gap-verdict b{color:var(--gold2);}
+  /* ---------- 四支柱 ---------- */
+  .pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+  .pillar{
+    background:var(--card);border:1px solid var(--line);border-radius:6px;
+    padding:26px 20px;position:relative;overflow:hidden;
+  }
+  .pillar::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--gold),transparent);
+  }
+  .pillar .idx{font-size:12px;color:var(--gold);letter-spacing:.25em;margin-bottom:10px;}
+  .pillar h3{font-size:19px;margin-bottom:10px;font-family:"Songti SC",serif;}
+  .pillar p{font-size:13.5px;color:var(--sub);}
+  /* ---------- 链路 ---------- */
+  .pipe{display:flex;align-items:stretch;gap:0;flex-wrap:nowrap;}
+  .pipe .node{
+    flex:1;background:var(--card);border:1px solid var(--line);
+    border-radius:6px;padding:16px 14px;text-align:center;position:relative;
+    transition:transform .25s;
+  }
+  .pipe .node:hover{transform:translateY(-4px);border-color:var(--gold);}
+  .pipe .node .n{font-size:11px;color:var(--gold);letter-spacing:.2em;margin-bottom:6px;}
+  .pipe .node .t{font-size:14.5px;font-weight:600;margin-bottom:4px;}
+  .pipe .node .d{font-size:12px;color:var(--sub);line-height:1.5;}
+  .pipe .arrow{
+    flex:none;width:34px;display:flex;align-items:center;justify-content:center;
+    color:var(--gold);font-size:20px;
+  }
+  .pipe .node.hl{border-color:var(--lime);}
+  .pipe .node.hl .n{color:var(--lime);}
+  /* ---------- 铁律 ---------- */
+  .rules{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .rule{
+    background:var(--card);border:1px solid var(--line);border-radius:6px;
+    padding:24px;display:flex;gap:18px;align-items:flex-start;
+  }
+  .rule .rk{
+    font-family:"Songti SC",serif;font-size:26px;color:var(--gold);
+    width:52px;height:52px;flex:none;border:1px solid var(--line);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .rule h4{font-size:17px;margin-bottom:6px;}
+  .rule p{font-size:13.5px;color:var(--sub);}
+  .llm-line{
+    margin-top:20px;padding:18px 24px;border-radius:6px;
+    border:1px dashed rgba(200,241,53,.5);background:rgba(200,241,53,.06);
+    font-size:15px;color:var(--ink);
+  }
+  .llm-line b{color:var(--lime);}
+  /* ---------- 隐私 ---------- */
+  .priv{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  .priv .item{
+    background:var(--card);border:1px solid var(--line);border-radius:6px;
+    padding:22px 20px;text-align:center;
+  }
+  .priv .item .big{font-size:15px;font-weight:700;color:var(--gold2);margin-bottom:8px;letter-spacing:.06em;}
+  .priv .item .small{font-size:12.5px;color:var(--sub);}
+  /* ---------- 路线图 ---------- */
+  .road{position:relative;padding-left:36px;}
+  .road::before{
+    content:"";position:absolute;left:11px;top:8px;bottom:8px;width:2px;
+    background:linear-gradient(var(--gold),var(--line),var(--gold));
+  }
+  .step{position:relative;margin-bottom:26px;}
+  .step::before{
+    content:"";position:absolute;left:-34px;top:8px;width:12px;height:12px;
+    border-radius:50%;background:var(--bg);border:3px solid var(--gold);
+  }
+  .step .ph{font-size:12px;color:var(--gold);letter-spacing:.2em;margin-bottom:4px;}
+  .step h4{font-size:19px;margin-bottom:6px;font-family:"Songti SC",serif;}
+  .step p{font-size:14px;color:var(--sub);max-width:760px;}
+  /* ---------- 页脚 ---------- */
+  footer{
+    margin-top:80px;padding-top:28px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;color:var(--sub);
+  }
+  footer .marks span{margin-left:18px;color:var(--gold);letter-spacing:.1em;}
+  @media(max-width:900px){
+    .pillars,.priv,.gap-grid{grid-template-columns:1fr 1fr;}
+    .pipe{flex-wrap:wrap;}
+    .pipe .arrow{transform:rotate(90deg);width:auto;height:26px;}
+    .rules{grid-template-columns:1fr;}
+    .sheet{padding:40px 24px;}
+    h1{font-size:44px;}
+  }
+  @media(max-width:560px){
+    .pillars,.priv,.gap-grid{grid-template-columns:1fr;}
+    .pipe .node{flex:1 1 100%;}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <!-- 顶部 -->
+  <div class="topline"><span>Laicai Bookkeeping</span></div>
+  <h1>来财<em>记账</em></h1>
+  <p class="sub">Android 实时自动记账 + 跨端账单导入 + 云端 LLM 周期分析 —— 一套「确定优先」的记账产品。</p>
+  <div class="promise">产品承诺 · 自动归集可获取的交易，并提供便捷导入与确认</div>
+
+  <!-- 01 市场断层 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-no">01</div>
+      <h2>市场断层：高 Star ≠ 自动记账</h2>
+      <span class="hint">调研日期 2026-08-17 · Star 快照</span>
+    </div>
+    <div class="gap-grid">
+      <div class="gap-card">
+        <div class="star">54.3k</div>
+        <div class="name">Maybe</div>
+        <div class="role">Web 账本 · 已归档，无实时捕获</div>
+        <span class="tag ok">适合参考体验</span>
+      </div>
+      <div class="gap-card">
+        <div class="star">28.2k</div>
+        <div class="name">Actual Budget</div>
+        <div class="role">本地优先账本 · 银行同步 · 非系统级捕获</div>
+        <span class="tag ok">适合参考账本模型</span>
+      </div>
+      <div class="gap-card">
+        <div class="star">538</div>
+        <div class="name">PennyWise AI</div>
+        <div class="role">Android 实时银行短信 · 最接近自动记账闭环</div>
+        <span class="tag gap">但 Android 专属 · 区域适配成本高</span>
+      </div>
+    </div>
+    <div class="gap-verdict">
+      <b>结论：</b>没有一个高 Star 开源项目同时完整实现「双端 + 实时自动记账 + 账单导入 + 大模型周期分析」。
+      自动记账，是这个市场未被填补的断层。
+    </div>
+  </section>
+
+  <!-- 02 四支柱 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-no">02</div>
+      <h2>四大能力支柱</h2>
+      <span class="hint">P0 = MVP 必做</span>
+    </div>
+    <div class="pillars">
+      <div class="pillar">
+        <div class="idx">PILLAR · A</div>
+        <h3>实时自动记账</h3>
+        <p>Android 通知捕获：来源预过滤 → 正文提取 → 确定性解析 → 去重合并 → 自动入账或待确认。</p>
+      </div>
+      <div class="pillar">
+        <div class="idx">PILLAR · B</div>
+        <h3>确定性账本</h3>
+        <p>金额/方向/余额由确定性代码控制；原生 SQLite 存储；多账户自动匹配；手动记账兜底。</p>
+      </div>
+      <div class="pillar">
+        <div class="idx">PILLAR · C</div>
+        <h3>跨端账单导入</h3>
+        <p>微信/支付宝 CSV、通用 CSV/OFX/QIF、PDF/OCR、分享扩展 —— iOS 的关键替代入口。</p>
+      </div>
+      <div class="pillar">
+        <div class="idx">PILLAR · D</div>
+        <h3>云端 LLM 分析</h3>
+        <p>确定性指标 + 可追溯周期报告 + 自然语言问答；显式授权、最小化上传、一键可关。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 自动记账链路 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-no">03</div>
+      <h2>一次自动记账的处理链路</h2>
+      <span class="hint">确定性优先 · 全程无 LLM 参与</span>
+    </div>
+    <div class="pipe">
+      <div class="node">
+        <div class="n">STEP 1</div>
+        <div class="t">来源预过滤</div>
+        <div class="d">按包名/标题识别微信、支付宝、银行通知，非目标直接丢弃</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <div class="n">STEP 2</div>
+        <div class="t">正文提取</div>
+        <div class="d">extras / MessagingStyle / tickerText，限制最大长度</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node hl">
+        <div class="n">STEP 3</div>
+        <div class="t">确定性解析</div>
+        <div class="d">金额、收支方向、商户、时间 —— 规则代码提取，不靠模型</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <div class="n">STEP 4</div>
+        <div class="t">去重合并</div>
+        <div class="d">SHA-256 外部 ID + 银行×钱包时间窗合并</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <div class="n">STEP 5</div>
+        <div class="t">置信度判定</div>
+        <div class="d">高置信 → 直接入账；否则 → 待确认</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <div class="n">STEP 6</div>
+        <div class="t">入账 / 待确认</div>
+        <div class="d">确认前不影响收支与预算统计</div>
+      </div>
+    </div>
+    <div class="llm-line">
+      <b>LLM 边界：</b>不决定金额、借贷方向、余额与去重结果 —— 只负责分类建议、趋势解释、异常提示与自然语言问答，且结论可下钻到原始交易。
+    </div>
+  </section>
+
+  <!-- 04 隐私 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-no">04</div>
+      <h2>隐私与安全设计</h2>
+      <span class="hint">隐私即竞争力</span>
+    </div>
+    <div class="priv">
+      <div class="item">
+        <div class="big">通知正文不落盘</div>
+        <div class="small">仅内存解析，只保存结构化交易字段；App 无后台联网权限</div>
+      </div>
+      <div class="item">
+        <div class="big">AES-256-GCM 备份</div>
+        <div class="small">PBKDF2 高迭代派生密钥，加密备份可恢复，导入前校验</div>
+      </div>
+      <div class="item">
+        <div class="big">云端分析可关</div>
+        <div class="small">显式授权 + 最小化上传 + 一键关闭，关闭后仅保留本地确定性指标</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 路线图 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-no">05</div>
+      <h2>四阶段实施路线</h2>
+      <span class="hint">对齐调研报告 §9 建议优先级</span>
+    </div>
+    <div class="road">
+      <div class="step">
+        <div class="ph">PHASE 1 · 可信记账核心</div>
+        <h4>Android 自动记账 + 双端账本</h4>
+        <p>通知捕获、去重、置信度、待确认闭环；手动记账；账户识别；原生 SQLite；通用 CSV 模板。</p>
+      </div>
+      <div class="step">
+        <div class="ph">PHASE 2 · 跨端导入能力</div>
+        <h4>全格式账单导入</h4>
+        <p>微信/支付宝官方账单、CSV/OFX/QIF、PDF/OCR、分享扩展与导入映射器。</p>
+      </div>
+      <div class="step">
+        <div class="ph">PHASE 3 · 周期分析</div>
+        <h4>确定性指标 + 云端 LLM 报告</h4>
+        <p>月度指标与异常检测由规则计算；显式授权的云端 LLM 生成可追溯分析报告。</p>
+      </div>
+      <div class="step">
+        <div class="ph">PHASE 4 · 连接与同步</div>
+        <h4>银行连接与跨设备同步</h4>
+        <p>视目标市场接入银行/Open Banking 聚合，评估端到端加密同步。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div>来财记账 · 产品信息图 v1.0 · 2026-08-17</div>
+    <div class="marks"><span>确定优先</span><span>隐私内建</span><span>可追溯</span></div>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<!--
+来财记账 · 奢华版（Luxury）高保真原型 · 单文件自包含 · file:// 双击可开
+
+【版本风格】母题「鎏金钱庄」：深墨绿底 #101A17 + 暖米白 #EDE7D8 + 鎏金 #C7A25B。
+界面如一间体面的老钱庄账房：金线鎏金条、金描边资产卡、行间金细线、衬线大字宽字距。
+Tab 为衬线文字型 + 金色小菱形 ◆ 指示；报告卡像一封金边信笺。
+【form 来自内容的哪里】「财富管理」的郑重感——鎏金与墨绿=「财」的传统尊贵意象，
+细金线=帐目的规矩与体面，环形资产环=资产如环、周而复始。
+【120% 细节签名】首页「资产环」：四个账户以同心金色圆环呈现占比（SVG stroke-dasharray），
+圆心叠放大号结余，环随加载动画逐段点亮。
+【假设清单】
+1. 无真实品牌 logo：微信/支付宝/招商银行以文字标签呈现（反 slop，不伪造 logo、不用 emoji 图标）。
+2. 深色底 + 米白文字保证对比度 ≥4.5:1；次级文字 #9AA79E 仅用于非关键标注。
+3. S0 演示帧「餐饮 -27.50 瑞幸咖啡」为演示专用样例，与统一账本数据并存，属演示场景。
+4. 「生成报告」「问答」「备份导出」为前端写死的模拟结果，未接真实 LLM。
+5. S3 保存的手动记录即时插入流水与首页最近流水；新增行以「今天」为日期。
+6. 状态栏文字在深色屏上显示米白，岛保持黑色；homeind 适配为米白，几何尺寸保持模板原值。
+7. 确认/忽略待确认、删除交易会实时更新角标与列表，保证数据一致。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>来财记账 · 奢华版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#101A17;--bg2:#16211D;--card:#1A2722;--ink:#EDE7D8;--gold:#C7A25B;
+  --gold2:#E3C88F;--sub:#9AA79E;--line:rgba(199,162,91,.4);--line2:rgba(199,162,91,.18);
+  --inc:#8FB573;--out:#C96A4A;
+  --serif:"Songti SC","Noto Serif SC","Playfair Display",serif;
+}
+html,body{height:100%}
+body{background:#0A100E;font-family:-apple-system,"PingFang SC",sans-serif;color:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px 0;font-size:14px}
+/* ============ iPhone 设备框（模板，尺寸固定） ============ */
+.iphone{width:340px;height:748px;position:relative;border-radius:46px;background:#000;box-shadow:0 26px 64px rgba(0,0,0,.4),0 0 0 2px #222;overflow:hidden;margin:0 auto}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:109px;height:31px;background:#000;border-radius:17px;z-index:60}
+.statusbar{position:absolute;top:0;left:0;right:0;height:47px;z-index:50;display:flex;justify-content:space-between;align-items:flex-end;padding:0 25px 6px;font-size:14px;font-weight:600;color:var(--ink)}
+.sb-icons{display:flex;align-items:center;gap:5px;font-size:10px;letter-spacing:-0.5px}
+.homeind{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:118px;height:4px;border-radius:2px;background:var(--ink);opacity:.55;z-index:60}
+.screen{position:absolute;inset:0;z-index:10;border-radius:42px;overflow:hidden;background:var(--bg)}
+.app{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#0E1714 0%,var(--bg) 30%)}
+.viewport{position:relative;flex:1;overflow:hidden}
+.page{position:absolute;inset:0;overflow-y:auto;padding:52px 20px 30px;opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .3s ease,transform .3s ease;scrollbar-width:none}
+.page::-webkit-scrollbar{display:none}
+.page.active{opacity:1;pointer-events:auto;transform:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.anim-in{animation:fadeUp .55s ease both}
+/* ============ 通用 ============ */
+.btn{font-size:13px;padding:5px 14px;border:1px solid var(--gold);border-radius:2px;background:transparent;color:var(--gold2);cursor:pointer;font-family:var(--serif);letter-spacing:.08em}
+.btn.primary{background:var(--gold);color:#101A17}
+.btn:active{transform:translateY(1px)}
+.ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.ph h2{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.12em}
+.ph .act{font-size:12px;color:var(--gold);cursor:pointer;border-bottom:1px solid var(--line);padding-bottom:1px;letter-spacing:.05em}
+.sec-t{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 8px}
+.sec-t h3{font-family:var(--serif);font-size:15px;font-weight:600;letter-spacing:.15em;color:var(--gold2)}
+.sec-t a{font-size:12px;color:var(--sub);cursor:pointer;border-bottom:1px solid var(--line2);padding-bottom:1px;text-decoration:none}
+/* 金线分割 */
+.goldline{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:12px 0;opacity:.6}
+/* ============ 首页 ============ */
+.hero{text-align:center;padding:2px 0 6px}
+.hero-month{font-size:12px;color:var(--gold);letter-spacing:.5em}
+/* 120% 细节签名：金色资产环 */
+.ringwrap{position:relative;width:196px;height:196px;margin:14px auto 8px}
+.ringwrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-seg{fill:none;stroke-width:14;stroke-linecap:butt;transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1)}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-center .rl{font-size:11px;color:var(--sub);letter-spacing:.3em}
+.ring-center .rv{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--ink);letter-spacing:.04em;font-variant-numeric:tabular-nums;margin:4px 0}
+.ring-center .rt{font-size:10px;color:var(--gold);letter-spacing:.35em}
+.ring-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:11px;color:var(--sub);margin-bottom:4px}
+.rlg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.hero-cap{font-size:11px;color:var(--sub);letter-spacing:.4em;margin-top:2px}
+/* 收支双卡：金描边四角饰 */
+.bal-duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.bcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:14px 14px 12px;text-align:left}
+.bcard:before,.bcard:after{content:"";position:absolute;width:10px;height:10px;border:1px solid var(--gold);opacity:.8}
+.bcard:before{top:-1px;left:-1px;border-right:none;border-bottom:none}
+.bcard:after{bottom:-1px;right:-1px;border-left:none;border-top:none}
+.bcard .bl{font-size:11px;color:var(--sub);letter-spacing:.2em}
+.bcard .bv{font-family:var(--serif);font-size:21px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+.bcard.out .bv{color:var(--out)}
+.bcard.inc .bv{color:var(--inc)}
+.bcard .bd{font-size:11px;color:var(--gold);margin-top:4px;letter-spacing:.05em}
+/* 自动记账演示 S0 */
+.demo-card{border:1px solid var(--line);border-radius:4px;padding:14px;margin:6px 0 2px;background:var(--card)}
+.demo-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.demo-title{font-family:var(--serif);font-size:16px;font-weight:600;letter-spacing:.08em}
+.demo-btns{display:flex;gap:8px}
+.demo-stage{position:relative;height:178px;overflow:hidden;border-top:1px dashed var(--line2);padding-top:12px}
+.dm-frame{position:absolute;left:0;right:0;opacity:0;transform:translateY(8px);transition:opacity .4s ease,transform .4s ease;pointer-events:none}
+.dm-frame.on{opacity:1;transform:none}
+.dm-notif.on{animation:notifIn .5s ease both}
+@keyframes notifIn{from{transform:translateX(-30px);opacity:0}to{transform:none;opacity:1}}
+.notif{border:1px solid var(--line);border-radius:4px;background:#121C18;padding:9px 12px}
+.notif-top{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+.notif-body{font-size:14px;margin-top:5px}
+.notif-body b{font-family:var(--serif);font-weight:600;color:var(--gold2)}
+.parse-line{font-size:12px;color:var(--sub);margin-bottom:6px;letter-spacing:.05em}
+.parse-fields{display:flex;gap:6px;flex-wrap:wrap}
+.pf{font-size:12px;border:1px solid var(--line2);border-radius:2px;padding:2px 8px;color:var(--sub)}
+.pf.hl{border-color:var(--gold);color:var(--gold2);background:rgba(199,162,91,.10)}
+.dm-entry{display:flex;align-items:center;gap:8px;font-size:14px;border-top:1px solid var(--line2);padding-top:9px}
+.dm-check{width:18px;height:18px;border-radius:50%;background:var(--gold);color:#101A17;font-size:12px;display:flex;align-items:center;justify-content:center;animation:pop .45s ease both}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.dm-caption{font-size:11px;color:var(--sub);margin-top:9px;border-top:1px dashed var(--line2);padding-top:8px}
+/* 待确认 */
+.pend-row{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:4px;padding:11px 13px;margin:10px 0;cursor:pointer;background:var(--card)}
+.pend-l{font-size:14px}
+.pend-l small{display:block;font-size:12px;color:var(--sub);margin-top:2px}
+.badge{display:inline-flex;min-width:20px;height:20px;border-radius:10px;background:var(--gold);color:#101A17;font-size:12px;align-items:center;justify-content:center;padding:0 6px;font-weight:700}
+/* 分类占比：金色细条 */
+.ratio-wrap{border-top:1px solid var(--line2);margin-top:14px;padding-top:12px}
+.ratio-bar{display:flex;height:5px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,.08);margin:8px 0 10px}
+.rb{height:100%}
+.rb-1{background:var(--gold)}.rb-2{background:#8FB573}.rb-3{background:#C96A4A}.rb-4{background:#5FA8A0}.rb-5{background:#B79A6D}.rb-6{background:rgba(199,162,91,.35)}
+.ratio-legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--sub)}
+.rl i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+/* 流水行 */
+.tx{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:11px 0;border-bottom:1px solid var(--line2);cursor:pointer}
+.tx:last-child{border-bottom:none}
+.tx-merc{font-size:14px;font-weight:500}
+.tx-meta{font-size:12px;color:var(--sub);margin-top:2px}
+.tx-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.tx-amt{font-family:var(--serif);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.tx-amt.out{color:var(--out)}
+.tx-amt.inc{color:var(--inc)}
+.tx-src{font-size:11px;color:var(--gold);letter-spacing:.04em}
+.tx-src.pend{color:var(--out)}
+.ck{color:var(--gold);font-size:12px}
+.day-h{font-size:11px;color:var(--gold);letter-spacing:.3em;margin:8px 0 4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.chip{font-size:12px;padding:3px 11px;border:1px solid var(--line2);border-radius:20px;color:var(--sub);cursor:pointer;background:transparent}
+.chip.on{border-color:var(--gold);color:var(--gold2);background:rgba(199,162,91,.10)}
+.searchbar{display:flex;gap:6px;margin:10px 0;border-bottom:1px solid var(--line);padding-bottom:8px}
+.searchbar input{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-size:14px}
+.searchbar input::placeholder{color:var(--sub)}
+/* 记一笔 S3 */
+.rec-amt{text-align:center;font-family:var(--serif);font-size:38px;font-weight:600;margin:6px 0 2px;font-variant-numeric:tabular-nums;letter-spacing:.03em}
+.rec-amt .u{font-size:18px;color:var(--gold)}
+.seg{display:flex;gap:8px;justify-content:center;margin:10px 0}
+.seg button{font-size:13px;padding:5px 16px;border:1px solid var(--line2);border-radius:2px;background:transparent;color:var(--sub);cursor:pointer;font-family:var(--serif)}
+.seg button.on{border-color:var(--gold);color:var(--gold2);background:rgba(199,162,91,.08)}
+.rec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.cell{font-size:13px;padding:9px 0;border:1px solid var(--line2);border-radius:2px;background:transparent;color:var(--ink);cursor:pointer}
+.cell.on{border-color:var(--gold);color:var(--gold2);background:rgba(199,162,91,.12)}
+.acct-label{font-size:11px;color:var(--gold);letter-spacing:.2em;margin:10px 0 6px}
+.acct-chips{display:flex;gap:6px;flex-wrap:wrap}
+.acct-chip{font-size:12px;padding:4px 10px;border:1px solid var(--line2);border-radius:2px;background:transparent;color:var(--sub);cursor:pointer}
+.acct-chip.on{border-color:var(--gold);color:var(--gold2);background:rgba(199,162,91,.10)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.key{font-size:18px;padding:9px 0;border:1px solid var(--line2);border-radius:2px;background:transparent;color:var(--ink);cursor:pointer;font-family:var(--serif)}
+.key.save{border-color:var(--gold);background:var(--gold);color:#101A17;font-weight:600}
+.key:active{transform:translateY(1px)}
+/* 分析 S4 */
+.metric-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.mcell{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.mcell.wide{grid-column:span 2}
+.mlabel{font-size:11px;color:var(--sub);letter-spacing:.15em}
+.mval{font-family:var(--serif);font-size:20px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+.mval .delta{font-size:11px;color:var(--gold);font-family:-apple-system,"PingFang SC",sans-serif;letter-spacing:.06em}
+.m-txt{font-family:var(--serif);font-size:17px}
+.rep-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:16px 16px 14px;margin-top:16px}
+.rep-card:before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+.rep-head{display:flex;justify-content:space-between;align-items:center}
+.rep-head h3{font-family:var(--serif);font-size:16px;letter-spacing:.1em}
+.rep-tag{font-size:11px;color:var(--gold);border:1px solid var(--line);border-radius:20px;padding:2px 9px;letter-spacing:.05em}
+.rep-sub{font-size:12px;color:var(--sub);margin:6px 0 10px}
+.rep-load{display:none;align-items:center;gap:8px;font-size:13px;color:var(--gold2);margin:10px 0}
+.rep-card.loading .rep-load{display:flex}
+.spinner{width:15px;height:15px;border:2px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.rep-paper{padding:10px 0 4px}
+.rep-paper .hint{font-size:13px;color:var(--sub)}
+.rep-paper p{font-size:14px;line-height:1.8;min-height:20px}
+.rep-meta{font-size:11px;color:var(--gold);letter-spacing:.04em;margin-top:8px;opacity:.9}
+.rep-btn{margin-top:10px;width:100%;font-size:14px;padding:9px 0;border:1px solid var(--gold);background:transparent;color:var(--gold2);cursor:pointer;font-family:var(--serif);letter-spacing:.2em;border-radius:2px}
+.rep-btn:disabled{opacity:.5}
+.scope summary{font-size:12px;color:var(--sub);cursor:pointer;margin-top:12px}
+.scope p{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.7}
+.qa{margin-top:14px}
+.qa h3{font-family:var(--serif);font-size:15px;letter-spacing:.1em;color:var(--gold2);margin-bottom:8px}
+.qa-chips{display:flex;gap:7px;flex-wrap:wrap}
+.qa-chip{font-size:12px;padding:4px 11px;border:1px solid var(--line2);border-radius:2px;background:transparent;color:var(--sub);cursor:pointer}
+.qa-chip:hover{border-color:var(--gold);color:var(--gold2)}
+.qa-ans{display:none;font-size:13px;line-height:1.8;color:var(--ink);margin-top:10px;border-left:2px solid var(--gold);padding-left:12px}
+.qa-ans.show{display:block}
+/* 我的 S5 */
+.acct-row{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line2);cursor:pointer}
+.acct-name{font-size:14px}
+.acct-name small{display:block;font-size:11px;color:var(--sub);margin-top:2px;letter-spacing:.04em}
+.acct-bal{font-family:var(--serif);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.sw-row{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line2)}
+.sw-t{font-size:14px}
+.sw-s{font-size:11px;color:var(--sub);margin-top:2px}
+.sw{width:44px;height:25px;border-radius:13px;border:1px solid var(--line2);background:transparent;cursor:pointer;position:relative;transition:background .25s}
+.sw.on{background:rgba(199,162,91,.25);border-color:var(--gold)}
+.sw .knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:var(--sub);transition:all .25s}
+.sw.on .knob{left:21px;background:var(--gold)}
+.cloud-warn{display:none;font-size:12px;color:var(--out);margin-top:8px}
+.cloud-warn.show{display:block}
+.menu-row{display:flex;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--line2);cursor:pointer;font-size:14px}
+.menu-row .arr{color:var(--gold)}
+.privacy{font-size:11px;color:var(--sub);line-height:1.8;margin-top:14px;letter-spacing:.03em}
+/* Tab 栏 */
+.tabbar{display:flex;background:rgba(12,19,16,.96);border-top:1px solid var(--line2);padding:6px 4px 10px;backdrop-filter:blur(4px)}
+.tab{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--sub);font-family:var(--serif);letter-spacing:.1em}
+.tab .tdot{width:5px;height:5px;background:transparent;transform:rotate(45deg)}
+.tab.on{color:var(--gold2)}
+.tab.on .tdot{background:var(--gold)}
+.tab-center{position:relative}
+.tab-center .plus{color:var(--bg);background:var(--gold);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;margin-top:-16px;box-shadow:0 4px 14px rgba(199,162,91,.35)}
+/* 弹层 */
+.veil{position:absolute;inset:0;background:rgba(5,8,7,.6);opacity:0;pointer-events:none;transition:opacity .25s;z-index:70}
+.veil.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:12px;right:12px;bottom:12px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:18px 18px 20px;transform:translateY(30px);opacity:0;pointer-events:none;transition:all .28s ease;z-index:80;box-shadow:0 -10px 40px rgba(0,0,0,.5)}
+.sheet.on{transform:none;opacity:1;pointer-events:auto}
+.sheet-close{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--sub);font-size:20px;cursor:pointer}
+.sheet h3{font-family:var(--serif);font-size:17px;letter-spacing:.1em;margin-bottom:6px}
+.sheet-hint{font-size:11px;color:var(--sub);margin-top:10px}
+.ds-amt{font-family:var(--serif);font-size:30px;font-weight:600;text-align:center;margin:6px 0 14px;font-variant-numeric:tabular-nums}
+.ds-amt.out{color:var(--out)}.ds-amt.inc{color:var(--inc)}
+.ds-row{display:flex;justify-content:space-between;padding:7px 2px;border-bottom:1px solid var(--line2);font-size:13px}
+.ds-row .k{color:var(--sub);font-size:12px}
+.ds-tag{font-size:11px;border:1px solid var(--line2);border-radius:20px;padding:1px 8px;color:var(--sub)}
+.ds-tag.ok{border-color:var(--gold);color:var(--gold2)}
+.ds-actions{display:flex;gap:9px;margin-top:16px}
+.ds-actions button{flex:1;padding:9px 0;border:1px solid var(--gold);background:transparent;color:var(--gold2);cursor:pointer;font-family:var(--serif);font-size:14px;letter-spacing:.1em;border-radius:2px}
+.ds-actions button.danger{border-color:var(--out);color:var(--out)}
+.ds-actions button.fill{background:var(--gold);color:#101A17}
+.pend-item{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line2)}
+.pi-l{font-size:14px}
+.pi-l small{display:block;font-size:11px;color:var(--sub);margin-top:2px}
+.pi-btns{display:flex;gap:8px}
+.pi-btns button{font-size:12px;padding:5px 12px;border:1px solid var(--line2);border-radius:2px;background:transparent;color:var(--sub);cursor:pointer}
+.pi-btns button.ok{border-color:var(--gold);color:var(--gold2)}
+.toast{position:absolute;left:50%;bottom:74px;transform:translateX(-50%) translateY(10px);background:var(--gold);color:#101A17;font-size:13px;padding:9px 18px;border-radius:4px;opacity:0;pointer-events:none;transition:all .3s;z-index:90;font-weight:600}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty{text-align:center;color:var(--sub);font-size:13px;padding:28px 0}
+</style>
+</head>
+<body>
+
+<div class="iphone">
+  <div class="island"></div>
+  <div class="statusbar">
+    <span class="sb-time">9:41</span>
+    <div class="sb-icons">▂▄▆<span style="font-size:11px">100%</span></div>
+  </div>
+
+  <div class="screen">
+    <div class="app">
+      <div class="viewport">
+
+        <!-- ============ S0+S1 首页（含自动记账演示） ============ -->
+        <div class="page active" id="p-home">
+          <!-- 自动记账演示 -->
+          <div class="demo-card">
+            <div class="demo-head">
+              <span class="demo-title">自动记账 · 演示</span>
+              <div class="demo-btns">
+                <button class="btn" id="demoPlay" onclick="playDemo()">播放演示</button>
+                <button class="btn" onclick="toggleDemo()" id="demoFold">收起</button>
+              </div>
+            </div>
+            <div class="demo-stage" id="demoStage">
+              <div class="dm-frame dm-notif" id="dmNotif">
+                <div class="parse-line">微信支付 · 刚刚</div>
+                <div class="notif">
+                  <div class="notif-top"><span>微信支付</span><span>交易提醒</span></div>
+                  <div class="notif-body">你在<b>瑞幸咖啡</b>消费 <b>¥27.50</b></div>
+                </div>
+              </div>
+              <div class="dm-frame" id="dmParse">
+                <div class="parse-line">确定性解析 · 规则代码</div>
+                <div class="parse-fields">
+                  <span class="pf hl">金额 ¥27.50</span><span class="pf hl">方向 支出</span><span class="pf hl">商户 瑞幸咖啡</span><span class="pf">分类 餐饮</span><span class="pf">置信 高</span>
+                </div>
+              </div>
+              <div class="dm-frame" id="dmEntry">
+                <div class="dm-entry"><span class="dm-check">✓</span><span><b>已自动入账</b> · 瑞幸咖啡 微信零钱 · 餐饮</span></div>
+              </div>
+            </div>
+            <div class="dm-caption">示例交易仅演示链路，不影响真实账单。点任意帧可查看链路。</div>
+          </div>
+
+          <div class="hero">
+            <div class="hero-month">AUGUST · 2026</div>
+            <!-- 120% 细节签名：金色资产环 -->
+            <div class="ringwrap">
+              <svg viewBox="0 0 196 196">
+                <circle cx="98" cy="98" r="82" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+                <circle class="ring-seg" id="seg1" cx="98" cy="98" r="82" stroke="#C7A25B" stroke-dasharray="515.2" stroke-dashoffset="515.2"/>
+                <circle class="ring-seg" id="seg2" cx="98" cy="98" r="82" stroke="#8FB573" stroke-dasharray="515.2" stroke-dashoffset="515.2"/>
+                <circle class="ring-seg" id="seg3" cx="98" cy="98" r="82" stroke="#5FA8A0" stroke-dasharray="515.2" stroke-dashoffset="515.2"/>
+                <circle class="ring-seg" id="seg4" cx="98" cy="98" r="82" stroke="#B79A6D" stroke-dasharray="515.2" stroke-dashoffset="515.2"/>
+              </svg>
+              <div class="ring-center">
+                <span class="rl">总资产</span>
+                <span class="rv" id="balHero">¥0.00</span>
+                <span class="rt">TAKE STOCK</span>
+              </div>
+            </div>
+            <div class="ring-legend">
+              <span class="rlg"><i style="background:#C7A25B"></i>招行 92%</span>
+              <span class="rlg"><i style="background:#8FB573"></i>微信 4%</span>
+              <span class="rlg"><i style="background:#5FA8A0"></i>支付宝 3%</span>
+              <span class="rlg"><i style="background:#B79A6D"></i>现金 2%</span>
+            </div>
+            <div class="hero-cap">本月结余 +¥16,567.40 · 环比 -12.4%</div>
+
+            <div class="bal-duo">
+              <div class="bcard out">
+                <div class="bl">本月支出</div>
+                <div class="bv" id="balOut">¥0.00</div>
+                <div class="bd">环比 -12.4% ↓</div>
+              </div>
+              <div class="bcard inc">
+                <div class="bl">本月收入</div>
+                <div class="bv" id="balInc">¥0.00</div>
+                <div class="bd">工资日 8/14</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec-t"><h3>待确认</h3><a onclick="openPend()">3 条待处理 ›</a></div>
+          <div class="pend-row" onclick="openPend()">
+            <div class="pend-l">美团外卖 -¥45.80<small>分类不明 · 8月16日</small></div>
+            <span class="badge" id="pendBadge">3</span>
+          </div>
+
+          <div class="ratio-wrap">
+            <div class="sec-t" style="margin-bottom:4px"><h3>分类占比</h3><span style="font-size:11px;color:var(--gold)">支出结构 · 本月</span></div>
+            <div class="ratio-bar"><span class="rb rb-1" style="width:42%"></span><span class="rb rb-2" style="width:18%"></span><span class="rb rb-3" style="width:14%"></span><span class="rb rb-4" style="width:12%"></span><span class="rb rb-5" style="width:9%"></span><span class="rb rb-6" style="width:5%"></span></div>
+            <div class="ratio-legend">
+              <span class="rl"><i style="background:#C7A25B"></i>餐饮 42%</span><span class="rl"><i style="background:#8FB573"></i>购物 18%</span><span class="rl"><i style="background:#C96A4A"></i>交通 14%</span><span class="rl"><i style="background:#5FA8A0"></i>居住 12%</span><span class="rl"><i style="background:#B79A6D"></i>娱乐 9%</span><span class="rl"><i style="background:rgba(199,162,91,.35)"></i>其他 5%</span>
+            </div>
+            <div style="font-size:11px;color:var(--sub);margin-top:6px">覆盖度：已确认 96% · 2 笔待确认未计入 · 以通知捕获为主</div>
+          </div>
+
+          <div class="sec-t"><h3>最近流水</h3><a class="act" onclick="goTab('ledger')">查看全部 ›</a></div>
+          <div id="homeRecent"></div>
+          <div class="goldline"></div>
+          <div style="text-align:center;font-size:11px;color:var(--sub);letter-spacing:.1em">来财记账 · 确定优先 · 自动归集可获取的交易</div>
+        </div>
+
+        <!-- ============ S2 流水 ============ -->
+        <div class="page" id="p-ledger">
+          <div class="ph"><h2>流水</h2><span class="act" onclick="toast('打开账单导入（演示）')">导入账单 ›</span></div>
+          <div class="searchbar"><input id="qInput" placeholder="搜索商户 / 备注…"><button class="btn" onclick="doSearch()">搜索</button></div>
+          <div class="chips" id="chipRow">
+            <button class="chip on" data-f="全部">全部</button>
+            <button class="chip" data-f="支出">支出</button>
+            <button class="chip" data-f="收入">收入</button>
+            <button class="chip" data-f="待确认">待确认</button>
+          </div>
+          <div id="ledgerList"></div>
+        </div>
+
+        <!-- ============ S3 记一笔 ============ -->
+        <div class="page" id="p-record">
+          <div class="ph"><h2>记一笔</h2><span style="font-size:12px;color:var(--sub)">手动记账 · 兜底</span></div>
+          <div class="rec-amt" id="recAmt"><span class="u">¥</span>0.00</div>
+          <div class="seg">
+            <button data-m="支出" class="on">支出</button>
+            <button data-m="收入">收入</button>
+            <button data-m="转账">转账</button>
+          </div>
+          <div id="recGridWrap"></div>
+          <div class="keypad">
+            <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+            <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+            <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+            <button class="key" data-k="del">⌫</button><button class="key" data-k="0">0</button><button class="key save" data-k="save">保存</button>
+          </div>
+        </div>
+
+        <!-- ============ S4 分析 ============ -->
+        <div class="page" id="p-analysis">
+          <div class="ph"><h2>分析</h2><span style="font-size:12px;color:var(--sub)">2026年8月 · 确定性优先</span></div>
+          <div class="metric-grid">
+            <div class="mcell"><div class="mlabel">本月支出</div><div class="mval" style="color:var(--out)">¥8,432.60<span class="delta">环比 -12.4% ↓</span></div></div>
+            <div class="mcell"><div class="mlabel">本月收入</div><div class="mval" style="color:var(--inc)">¥25,000.00</div></div>
+            <div class="mcell"><div class="mlabel">本月结余</div><div class="mval" style="color:var(--inc)">+¥16,567.40</div></div>
+            <div class="mcell"><div class="mlabel">餐饮预算</div><div class="mval"><span class="m-txt">超支 <span style="color:var(--out)">+8%</span></span></div></div>
+            <div class="mcell wide"><div class="mlabel">Top 商户（本月）</div><div class="mval"><span class="m-txt" style="font-family:var(--serif)">星巴克 · 6 笔 <span style="color:var(--gold)">¥186.00</span></span></div></div>
+          </div>
+          <div class="ratio-wrap" style="border-top:none;margin-top:10px;padding-top:4px">
+            <div class="ratio-bar"><span class="rb rb-1" style="width:42%"></span><span class="rb rb-2" style="width:18%"></span><span class="rb rb-3" style="width:14%"></span><span class="rb rb-4" style="width:12%"></span><span class="rb rb-5" style="width:9%"></span><span class="rb rb-6" style="width:5%"></span></div>
+            <div class="ratio-legend">
+              <span class="rl"><i style="background:#C7A25B"></i>餐饮 42%</span><span class="rl"><i style="background:#8FB573"></i>购物 18%</span><span class="rl"><i style="background:#C96A4A"></i>交通 14%</span><span class="rl"><i style="background:#5FA8A0"></i>居住 12%</span><span class="rl"><i style="background:#B79A6D"></i>娱乐 9%</span><span class="rl"><i style="background:rgba(199,162,91,.35)"></i>其他 5%</span>
+            </div>
+          </div>
+          <!-- LLM 周期报告（金边信笺） -->
+          <div class="rep-card" id="reportCard">
+            <div class="rep-head"><h3>周期报告</h3><span class="rep-tag">云端 LLM</span></div>
+            <div class="rep-sub">基于已确认账本与确定性指标生成 · 每个结论可下钻到原始交易</div>
+            <div class="rep-load"><span class="spinner"></span><span>正在汇总确定性指标并生成报告…</span></div>
+            <div class="rep-paper"><span class="hint" id="repHint">点击下方「生成报告」，LLM 将基于本月确定性指标撰写周期总结。</span><p id="reportPaper"></p></div>
+            <div class="rep-meta" id="covLine">覆盖度 已确认 96%（2 笔待确认未计入）｜云端分析已授权 · 可关闭</div>
+            <button class="rep-btn" id="repBtn" onclick="genReport()">生 成 报 告</button>
+          </div>
+          <details class="scope"><summary>数据范围</summary><p>统计区间：8月1日—8月17日 · 仅计入已确认交易 · 待确认记录未计入 · 账户含银行卡与电子钱包。</p></details>
+          <div class="qa">
+            <h3>问一问</h3>
+            <div class="qa-chips">
+              <button class="qa-chip" onclick="ask('q1')">这个月外卖花了多少？</button>
+              <button class="qa-chip" onclick="ask('q2')">餐饮环比怎么变？</button>
+            </div>
+            <div class="qa-ans" id="qaAns"></div>
+          </div>
+        </div>
+
+        <!-- ============ S5 我的 ============ -->
+        <div class="page" id="p-mine">
+          <div class="ph"><h2>我的</h2><span style="font-size:12px;color:var(--sub)">账户与设置</span></div>
+          <div class="sec-t"><h3>账户</h3><span style="font-size:12px;color:var(--sub)">合计 ¥28,849.87</span></div>
+          <div class="acct-row" onclick="openAcct('招商银行 ♥8899')"><span class="acct-name">招商银行 ♥8899<small>借记卡 · 工资卡 · 自动匹配</small></span><span class="acct-bal">¥26,480.52</span></div>
+          <div class="acct-row" onclick="openAcct('微信零钱')"><span class="acct-name">微信零钱<small>电子钱包 · 高频支付</small></span><span class="acct-bal">¥1,206.35</span></div>
+          <div class="acct-row" onclick="openAcct('支付宝')"><span class="acct-name">支付宝<small>电子钱包</small></span><span class="acct-bal">¥843.20</span></div>
+          <div class="acct-row" onclick="openAcct('现金')"><span class="acct-name">现金<small>现金账户 · 抄账低置信</small></span><span class="acct-bal">¥520.00</span></div>
+          <div class="sec-t"><h3>自动记账</h3></div>
+          <div class="sw-row">
+            <div><div class="sw-t">通知监听</div><div class="sw-s" id="notifStat">已开启 · 实时捕获支付通知</div></div>
+            <button class="sw on" id="swNotif" onclick="toggleSw('notif')"><span class="knob"></span></button>
+          </div>
+          <div class="sw-row">
+            <div><div class="sw-t">云端分析授权</div><div class="sw-s" id="cloudStat">已授权 · 仅上传所需指标</div></div>
+            <button class="sw on" id="swCloud" onclick="toggleSw('cloud')"><span class="knob"></span></button>
+          </div>
+          <div class="cloud-warn" id="cloudWarn">关闭后仅保留本地确定性指标：报告与问答不可用，记账与统计不受影响。</div>
+          <div class="sec-t"><h3>数据</h3></div>
+          <div class="menu-row" onclick="toast('已生成加密备份（AES-256-GCM · 演示）')"><span>加密备份</span><span class="arr">›</span></div>
+          <div class="menu-row" onclick="toast('选择备份文件导入（演示）')"><span>恢复备份</span><span class="arr">›</span></div>
+          <div class="privacy">隐私声明：通知正文仅内存解析、不落盘；数据本地优先，可导出；云端分析显式授权、可一键关闭。</div>
+          <div style="text-align:center;font-size:11px;color:var(--sub);margin-top:14px;letter-spacing:.2em">来财记账 v0.9 · 开源 MIT · 奢华版原型</div>
+        </div>
+      </div>
+
+      <!-- Tab 栏 -->
+      <nav class="tabbar">
+        <button class="tab on" data-tab="home"><span class="tdot"></span>首页</button>
+        <button class="tab" data-tab="ledger"><span class="tdot"></span>流水</button>
+        <button class="tab tab-center" data-tab="record"><span class="plus">＋</span><span class="tl">记一笔</span></button>
+        <button class="tab" data-tab="analysis"><span class="tdot"></span>分析</button>
+        <button class="tab" data-tab="mine"><span class="tdot"></span>我的</button>
+      </nav>
+
+      <!-- 弹层 -->
+      <div class="veil" id="veil" onclick="closeSheet()"></div>
+      <div class="sheet" id="sheetTx"><button class="sheet-close" onclick="closeSheet()">×</button><div id="dsBody"></div></div>
+      <div class="sheet" id="sheetPend"><button class="sheet-close" onclick="closeSheet()">×</button><h3>待确认</h3><div id="pendList"></div><div class="sheet-hint">确认前不计入收支与统计 · 每条可单独处理</div></div>
+      <div class="sheet" id="sheetAcct"><button class="sheet-close" onclick="closeSheet()">×</button><div id="acctBody"></div></div>
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+  <div class="homeind"></div>
+</div>
+
+<script>
+/* ============ 数据（统一，不得更改） ============ */
+var T=[
+ {id:1,day:'8月17日',time:'09:12',merchant:'瑞幸咖啡',amount:-32.50,acct:'微信零钱',cat:'餐饮',status:1,src:'微信通知自动捕获',conf:0.97},
+ {id:2,day:'8月17日',time:'08:40',merchant:'地铁',amount:-6.00,acct:'支付宝',cat:'交通',status:1,src:'支付宝通知自动捕获',conf:0.98},
+ {id:3,day:'8月16日',time:'20:23',merchant:'盒马鲜生',amount:-128.60,acct:'支付宝',cat:'购物',status:1,src:'支付宝通知自动捕获',conf:0.96},
+ {id:4,day:'8月16日',time:'12:05',merchant:'美团外卖',amount:-45.80,acct:'微信零钱',cat:'餐饮',status:0,src:'微信通知自动捕获',conf:0.62,pendReason:'分类不明'},
+ {id:5,day:'8月15日',time:'18:30',merchant:'星巴克',amount:-38.00,acct:'招商银行',cat:'餐饮',status:1,src:'招商银行通知自动捕获',conf:0.97},
+ {id:6,day:'8月14日',time:'10:00',merchant:'工资入账',amount:25000.00,acct:'招商银行',cat:'收入',status:1,src:'招商银行通知自动捕获',conf:0.99},
+ {id:7,day:'8月12日',time:'22:10',merchant:'滴滴出行',amount:-18.40,acct:'微信零钱',cat:'交通',status:1,src:'微信通知自动捕获',conf:0.95},
+ {id:8,day:'8月10日',time:'15:00',merchant:'京东',amount:-299.00,acct:'招商银行',cat:'购物',status:0,src:'招商银行通知自动捕获',conf:0.55,pendReason:'账户未知'}
+];
+var PEND=[
+ {id:'p1',merchant:'美团外卖',amount:-45.80,day:'8月16日',reason:'分类不明'},
+ {id:'p2',merchant:'京东',amount:-299.00,day:'8月10日',reason:'账户未知'},
+ {id:'p3',merchant:'现金',amount:-120.00,day:'8月13日',reason:'低置信抄账'}
+];
+var ACCTS=['招商银行 ♥8899','微信零钱','支付宝','现金'];
+var ACCTMETA={'招商银行 ♥8899':{type:'借记卡 · 尾号 8899',note:'工资卡 · 通知自动匹配账户'},'微信零钱':{type:'电子钱包',note:'高频支付 · 微信通知捕获'},'支付宝':{type:'电子钱包',note:'支付宝通知捕获'},'现金':{type:'现金账户',note:'手动/抄账入账 · 低置信优先待确认'}};
+var CATS={支出:['餐饮','交通','购物','居住','娱乐','其他'],收入:['工资','理财','红包','其他'],转账:[]};
+var state={filter:'全部',q:'',mode:'支出',cat:'餐饮',acct:'微信零钱',amt:'',from:'招商银行 ♥8899',to:'微信零钱',notif:true,cloud:true,reportDone:false};
+var $=function(s){return document.querySelector(s)};
+function f2(n){return n.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function amtHtml(t){return (t.amount<0?'-':'+')+'¥'+f2(Math.abs(t.amount))}
+/* ============ 渲染 ============ */
+function txRow(t){
+  var src=t.status?t.src:'待确认 · '+t.pendReason;
+  var ck=t.status?'<span class="ck">✓</span>':'';
+  return '<div class="tx" data-id="'+t.id+'">'
+   +'<div><div class="tx-merc">'+t.merchant+' '+ck+'</div><div class="tx-meta">'+t.time+' · '+t.cat+' · '+t.acct+'</div></div>'
+   +'<div class="tx-right"><div class="tx-amt '+(t.amount>0?'inc':'out')+'">'+amtHtml(t)+'</div><span class="tx-src'+(t.status?'':' pend')+'">'+src+'</span></div>'
+   +'</div>';
+}
+function renderLedger(){
+  var list=T.filter(function(t){
+    var ok=true;
+    if(state.filter==='支出')ok=t.amount<0;
+    else if(state.filter==='收入')ok=t.amount>0;
+    else if(state.filter==='待确认')ok=t.status===0;
+    if(ok&&state.q){ok=t.merchant.toLowerCase().indexOf(state.q.toLowerCase())>-1}
+    return ok;
+  });
+  var html='',last='';
+  list.forEach(function(t){if(t.day!==last){html+='<div class="day-h">'+t.day+'</div>';last=t.day}html+=txRow(t)});
+  $('#ledgerList').innerHTML=html||'<div class="empty">无匹配记录</div>';
+}
+function renderHome(){var list=T.slice(0,4);$('#homeRecent').innerHTML=list.map(txRow).join('')}
+function renderPend(){
+  $('#pendList').innerHTML=PEND.map(function(p){
+    return '<div class="pend-item">'
+     +'<div class="pi-l">'+p.merchant+' '+amtHtml({amount:p.amount})+'<small>'+p.day+' · '+p.reason+'</small></div>'
+     +'<div class="pi-btns"><button class="ok" onclick="confirmPend(\''+p.id+'\')">确认</button><button onclick="ignorePend(\''+p.id+'\')">忽略</button></div>'
+     +'</div>';
+  }).join('');
+  $('#pendBadge').textContent=PEND.length;
+}
+function doSearch(){state.q=$('#qInput').value.trim();renderLedger()}
+/* ============ 动画：count-up ============ */
+function countUp(el,target,dur,cb){
+  var t0=performance.now(),pre=el.id==='balHero'?'¥':'';
+  (function step(t){var p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=pre+f2(target*e);if(p<1)requestAnimationFrame(step);else if(cb)cb()})(t0);
+}
+/* 金色资产环 120% 签名 */
+function drawRing(){
+  var total=28849.87,segs=[['seg1',26480.52],['seg2',1206.35],['seg3',843.20],['seg4',520.00]];
+  segs.forEach(function(s,idx){
+    var frac=s[1]/total,C=515.2;
+    var el=$('#'+s[0]);
+    setTimeout(function(){
+      el.style.strokeDasharray=C+' '+C;
+      el.style.strokeDashoffset=C-(C*frac);
+    },300+idx*260);
+  });
+}
+/* ============ S0 自动记账演示 ============ */
+var demoOn=false,demoTimer=null;
+function playDemo(){
+  clearTimeout(demoTimer);
+  ['dmNotif','dmParse','dmEntry'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('on');void el.offsetWidth});
+  $('#demoPlay').textContent='播放演示';
+  demoTimer=setTimeout(function(){document.getElementById('dmNotif').classList.add('on')},80);
+  demoTimer=setTimeout(function(){document.getElementById('dmParse').classList.add('on')},760);
+  demoTimer=setTimeout(function(){document.getElementById('dmEntry').classList.add('on')},1500);
+  demoTimer=setTimeout(function(){$('#demoPlay').textContent='重播';demoOn=true},2150);
+}
+function toggleDemo(){
+  var s=$('#demoStage'),f=$('#demoFold');
+  var collapsed=s.style.display==='none';
+  s.style.display=collapsed?'block':'none';
+  f.textContent=collapsed?'收起':'展开';
+}
+/* ============ Tab 切换 ============ */
+function goTab(name){
+  if(state.tab===name)return;
+  state.tab=name;
+  var pages=document.querySelectorAll('.page');
+  for(var i=0;i<pages.length;i++)pages[i].classList.remove('active');
+  var pg=$('#p-'+name);pg.classList.add('active');pg.scrollTop=0;
+  var tabs=document.querySelectorAll('.tab');
+  for(var j=0;j<tabs.length;j++)tabs[j].classList.toggle('on',tabs[j].dataset.tab===name);
+  if(name==='record'){updateAmt();renderGrid()}
+  if(name==='ledger')renderLedger();
+}
+/* ============ 交易详情 / 删除 ============ */
+function openTx(id){
+  var t=T.find(function(x){return x.id===id});if(!t)return;
+  var src=t.status?'<span class="ds-tag ok">'+t.src+'</span>':'<span class="ds-tag">自动捕获 · 待确认</span>';
+  var conf=t.status?(Math.round(t.conf*100)+'%'):(Math.round(t.conf*100)+'% · 低于阈值');
+  $('#dsBody').innerHTML='<div class="ds-amt '+(t.amount>0?'inc':'out')+'">'+amtHtml(t)+'</div>'
+   +'<div class="ds-row"><span class="k">商户</span><span>'+t.merchant+'</span></div>'
+   +'<div class="ds-row"><span class="k">分类</span><span>'+t.cat+(t.status?'':' · 待确认')+'</span></div>'
+   +'<div class="ds-row"><span class="k">账户</span><span>'+t.acct+'</span></div>'
+   +'<div class="ds-row"><span class="k">时间</span><span>'+t.day+' '+t.time+'</span></div>'
+   +'<div class="ds-row"><span class="k">来源</span><span>'+src+'</span></div>'
+   +'<div class="ds-row"><span class="k">置信度</span><span>'+conf+'</span></div>'
+   +'<div class="ds-row"><span class="k">备注</span><span>'+(t.pendReason?('待确认：'+t.pendReason):'—')+'</span></div>'
+   +'<div class="ds-actions"><button onclick="editTx('+id+')">编辑</button><button class="danger" onclick="delTx('+id+')">删除</button></div>';
+  openSheet('sheetTx');
+}
+function editTx(id){closeSheet();toast('编辑功能演示：可修改金额、分类与备注')}
+function delTx(id){
+  var i=T.findIndex(function(x){return x.id===id});if(i<0)return;
+  var t=T[i];T.splice(i,1);
+  var j=PEND.findIndex(function(p){return p.merchant===t.merchant&&Math.abs(p.amount)===Math.abs(t.amount)});
+  if(j>=0)PEND.splice(j,1);
+  renderLedger();renderHome();renderPend();closeSheet();toast('已删除 · 可在「恢复备份」中找回（演示）');
+}
+/* ============ 待确认 ============ */
+function openPend(){openSheet('sheetPend')}
+function confirmPend(pid){
+  var i=PEND.findIndex(function(p){return p.id===pid});if(i<0)return;
+  var p=PEND[i];PEND.splice(i,1);
+  var t=T.find(function(x){return x.merchant===p.merchant&&Math.abs(x.amount)===Math.abs(p.amount)});
+  if(t){t.status=1;t.pendReason=null}
+  renderPend();renderLedger();renderHome();toast('已确认入账，计入统计');
+}
+function ignorePend(pid){
+  var i=PEND.findIndex(function(p){return p.id===pid});if(i<0)return;
+  PEND.splice(i,1);
+  renderPend();toast('已忽略 · 不会入账');
+}
+/* ============ S3 记一笔 ============ */
+function updateAmt(){
+  var v=parseFloat(state.amt||'0');
+  $('#recAmt').innerHTML='<span class="u">¥</span>'+f2(v);
+}
+function renderGrid(){
+  var cats=CATS[state.mode]||[];var html='';
+  if(cats.length){
+    html+='<div class="rec-grid">'+cats.map(function(c){return '<button class="cell'+(state.cat===c?' on':'')+'" data-c="'+c+'">'+c+'</button>'}).join('')+'</div>';
+    html+='<div class="acct-label">账户</div><div class="acct-chips">'+ACCTS.map(function(a){return '<button class="acct-chip'+(state.acct===a?' on':'')+'" data-a="'+a+'">'+a+'</button>'}).join('')+'</div>';
+  }else{
+    html+='<div class="xfer-note" style="font-size:12px;color:var(--sub);margin:4px 0">转账不设分类，仅记账户划转</div>';
+    html+='<div class="acct-label">转出账户</div><div class="acct-chips">'+ACCTS.map(function(a){return '<button class="acct-chip'+(state.from===a?' on':'')+'" data-from="'+a+'">'+a+'</button>'}).join('')+'</div>';
+    html+='<div class="acct-label">转入账户</div><div class="acct-chips">'+ACCTS.map(function(a){return '<button class="acct-chip'+(state.to===a?' on':'')+'" data-to="'+a+'">'+a+'</button>'}).join('')+'</div>';
+  }
+  $('#recGridWrap').innerHTML=html;
+}
+function key(k){
+  if(k==='del'){state.amt=state.amt.slice(0,-1)}
+  else if(k==='.'){if(state.amt.indexOf('.')<0)state.amt=state.amt?state.amt+'.':'0.'}
+  else{
+    var parts=(state.amt+'.').split('.'),d=parts[1];
+    if(d&&d.length>=2)return;
+    if(parts[0].length>=7)return;
+    state.amt=state.amt==='0'?k:state.amt+k;
+  }
+  updateAmt();
+}
+function nowHM(){var d=new Date(),p=function(n){return n<10?'0'+n:n};return p(d.getHours())+':'+p(d.getMinutes())}
+function saveRec(){
+  var v=parseFloat(state.amt||'0');
+  if(v<=0){toast('请输入金额');return}
+  if(state.mode==='转账'){toast('已记一笔转账：'+state.from+' → '+state.to);state.amt='';updateAmt();return}
+  if(!state.cat){toast('请选择分类');return}
+  T.unshift({id:Date.now(),day:'今天',time:nowHM(),merchant:'手动记账',amount:state.mode==='支出'?-v:v,acct:state.acct,cat:state.cat,status:1,src:'手动',conf:1});
+  renderLedger();renderHome();toast('已记一笔');
+  state.amt='';updateAmt();
+}
+/* ============ S4 报告 / 问答 ============ */
+function typeInto(el,text,done){
+  var i=0;el.textContent='';
+  var iv=setInterval(function(){
+    el.textContent=text.slice(0,++i);
+    if(i>=text.length){clearInterval(iv);if(done)done()}
+  },28);
+}
+function genReport(){
+  var card=$('#reportCard');
+  if(card.classList.contains('loading'))return;
+  card.classList.add('loading');
+  $('#repBtn').disabled=true;
+  $('#repHint').style.display='none';
+  setTimeout(function(){
+    typeInto($('#reportPaper'),'本月支出 8,432.60 元，环比下降 12.4%——主要来自餐饮收敛。餐饮支出超预算 8%，集中在星巴克（6 笔 186 元）。建议下周减少咖啡类外带，预计每月可节省约 120 元。',function(){
+      card.classList.remove('loading');
+      $('#repBtn').disabled=false;
+      $('#repBtn').textContent='重新生成';
+      $('#covLine').classList.add('show');
+    });
+  },1200);
+}
+function ask(q){
+  var el=$('#qaAns');
+  var ans=q==='q1'
+   ?'按当前已确认账本：本月外卖类已确认 0 笔。最近一笔「美团外卖 ¥45.80」为待确认（分类不明），未计入支出统计——确认后即并入。'
+   :'本月餐饮占支出 42%，环比整体下降 12.4%，主因餐饮收敛；Top 商户星巴克 6 笔 ¥186.00，超预算 8%，建议下周减少外带咖啡，约可省 ¥120。';
+  el.classList.add('show');
+  typeInto(el,ans);
+}
+/* ============ S5 开关 ============ */
+function toggleSw(which){
+  if(which==='notif'){
+    state.notif=!state.notif;
+    $('#swNotif').classList.toggle('on',state.notif);
+    $('#notifStat').textContent=state.notif?'已开启 · 实时捕获支付通知':'已中断 · 仅手动记账与导入';
+  }else{
+    state.cloud=!state.cloud;
+    $('#swCloud').classList.toggle('on',state.cloud);
+    $('#cloudStat').textContent=state.cloud?'已授权 · 仅上传所需指标':'未授权 · 数据不出站';
+    $('#cloudWarn').classList.toggle('show',!state.cloud);
+  }
+}
+/* ============ 弹层 / toast ============ */
+function openSheet(id){$('#veil').classList.add('on');$('#'+id).classList.add('on')}
+function closeSheet(){document.querySelectorAll('.sheet').forEach(function(s){s.classList.remove('on')});$('#veil').classList.remove('on')}
+var toastTimer=null;
+function toast(msg){
+  var t=$('#toast');t.textContent=msg;t.classList.add('on');
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('on')},1800);
+}
+function openAcct(name){
+  var m=ACCTMETA[name];
+  $('#acctBody').innerHTML='<h3>'+name+'</h3>'
+   +'<div class="ds-amt '+(name==='现金'?'':'inc')+'">¥'+f2(name==='招商银行 ♥8899'?26480.52:name==='微信零钱'?1206.35:name==='支付宝'?843.20:520.00)+'</div>'
+   +'<div class="ds-row"><span class="k">类型</span><span>'+m.type+'</span></div>'
+   +'<div class="ds-row"><span class="k">说明</span><span>'+m.note+'</span></div>'
+   +'<div class="ds-row"><span class="k">记账方式</span><span>'+(name==='现金'?'手动 · 抄账':'通知自动捕获')+'</span></div>'
+   +'<div class="ds-actions"><button class="fill" onclick="closeSheet();toast(\'余额调整演示\')">调整余额</button></div>';
+  openSheet('sheetAcct');
+}
+/* ============ 事件绑定 ============ */
+document.querySelector('.viewport').addEventListener('click',function(e){
+  var row=e.target.closest('.tx');
+  if(row){openTx(+row.dataset.id);return}
+  var chip=e.target.closest('.chip');
+  if(chip){state.filter=chip.dataset.f;document.querySelectorAll('.chip').forEach(function(c){c.classList.toggle('on',c===chip)});renderLedger();return}
+});
+document.querySelector('.tabbar').addEventListener('click',function(e){
+  var t=e.target.closest('.tab');if(t)goTab(t.dataset.tab);
+});
+$('#p-record').addEventListener('click',function(e){
+  var k=e.target.closest('.key');
+  if(k){k.dataset.k==='save'?saveRec():key(k.dataset.k);return}
+  var s=e.target.closest('.seg button');
+  if(s){state.mode=s.dataset.m;state.cat=CATS[state.mode][0]||null;renderGrid();updateAmt();return}
+  var f=e.target.closest('[data-from]');
+  if(f){state.from=f.dataset.from;renderGrid();return}
+  var to=e.target.closest('[data-to]');
+  if(to){state.to=to.dataset.to;renderGrid();return}
+  var a=e.target.closest('.acct-chip');
+  if(a){state.acct=a.dataset.a;renderGrid();return}
+  var c=e.target.closest('.cell');
+  if(c){state.cat=c.dataset.c;renderGrid();return}
+});
+/* ============ 启动 ============ */
+renderLedger();renderHome();renderPend();renderGrid();updateAmt();
+setTimeout(drawRing,300);
+setTimeout(function(){
+  countUp($('#balHero'),28849.87,1200);
+  countUp($('#balOut'),8432.60,1000);
+  countUp($('#balInc'),25000.00,1000);
+},420);
+setTimeout(playDemo,1800);
+</script>
+</body>
+</html>
